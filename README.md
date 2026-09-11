@@ -1,5 +1,11 @@
 # Tracea iOS 🚀
 
+[![CI](https://github.com/HariKulhari06/tracea-ios/actions/workflows/ci.yml/badge.svg)](https://github.com/HariKulhari06/tracea-ios/actions/workflows/ci.yml)
+[![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
+[![iOS 16+](https://img.shields.io/badge/iOS-16%2B-blue.svg)](https://developer.apple.com/ios/)
+[![SPM Compatible](https://img.shields.io/badge/SPM-Compatible-brightgreen.svg)](https://swift.org/package-manager/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A modular in-app HTTP/HTTPS network inspection and API mocking library for iOS, written in pure Swift and SwiftUI.
 
 > [!NOTE]
