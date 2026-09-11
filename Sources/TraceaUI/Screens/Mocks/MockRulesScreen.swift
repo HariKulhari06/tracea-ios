@@ -66,14 +66,27 @@ struct MockRulesScreen: View {
         }
         .navigationTitle("Mocks")
         .sheet(isPresented: $showingAddRule) {
-            MockRuleEditor(capturedPaths: viewModel.capturedPaths) { newRule in
-                viewModel.addRule(newRule)
-            }
+            MockRuleEditor(
+                capturedPaths: viewModel.capturedPaths,
+                onImportPayload: { path in
+                    await viewModel.getResponseBodyForPath(path)
+                },
+                onSave: { newRule in
+                    viewModel.addRule(newRule)
+                }
+            )
         }
         .sheet(item: $editingRule) { rule in
-            MockRuleEditor(rule: rule, capturedPaths: viewModel.capturedPaths) { updatedRule in
-                viewModel.updateRule(updatedRule)
-            }
+            MockRuleEditor(
+                rule: rule,
+                capturedPaths: viewModel.capturedPaths,
+                onImportPayload: { path in
+                    await viewModel.getResponseBodyForPath(path)
+                },
+                onSave: { updatedRule in
+                    viewModel.updateRule(updatedRule)
+                }
+            )
         }
     }
 }
@@ -130,14 +143,22 @@ struct MockRuleEditor: View {
     @State private var responseBody: String = ""
     @State private var delayMs: Int = 0
     @State private var contentType: String = "application/json"
+    @State private var isImporting: Bool = false
     
     let capturedPaths: [String]
+    let onImportPayload: ((String) async -> String?)?
     let onSave: (MockRule) -> Void
     var existingRule: MockRule?
     
-    init(rule: MockRule? = nil, capturedPaths: [String], onSave: @escaping (MockRule) -> Void) {
+    init(
+        rule: MockRule? = nil,
+        capturedPaths: [String],
+        onImportPayload: ((String) async -> String?)? = nil,
+        onSave: @escaping (MockRule) -> Void
+    ) {
         self.existingRule = rule
         self.capturedPaths = capturedPaths
+        self.onImportPayload = onImportPayload
         self.onSave = onSave
         
         if let rule = rule {
@@ -159,7 +180,23 @@ struct MockRuleEditor: View {
                             Text(m.rawValue.uppercased()).tag(m)
                         }
                     }
-                    TextField("Path Pattern (e.g. */users/*)", text: $pathPattern)
+                    
+                    HStack {
+                        TextField("Path Pattern (e.g. /v1/users)", text: $pathPattern)
+                        
+                        if !capturedPaths.isEmpty {
+                            Menu {
+                                ForEach(capturedPaths, id: \.self) { path in
+                                    Button(path) {
+                                        pathPattern = path
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "clock.arrow.circlepath")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                    }
                 }
                 
                 Section(header: Text("Response")) {
@@ -169,6 +206,34 @@ struct MockRuleEditor: View {
                         }
                     }
                     TextField("Content-Type", text: $contentType)
+                    
+                    HStack {
+                        Button {
+                            formatJson()
+                        } label: {
+                            Label("Format JSON", systemImage: "text.alignleft")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.borderless)
+                        
+                        Spacer()
+                        
+                        Button {
+                            importLatestPayload()
+                        } label: {
+                            HStack(spacing: 4) {
+                                if isImporting {
+                                    ProgressView().scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "arrow.down.doc")
+                                }
+                                Text("Import Latest")
+                            }
+                            .font(.caption)
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(pathPattern.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isImporting)
+                    }
                     
                     TextEditor(text: $responseBody)
                         .frame(height: 150)
@@ -203,5 +268,26 @@ struct MockRuleEditor: View {
                 }
             }
         }
+    }
+    
+    private func importLatestPayload() {
+        guard let onImport = onImportPayload, !pathPattern.isEmpty else { return }
+        isImporting = true
+        Task {
+            if let latest = await onImport(pathPattern.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                responseBody = latest
+            }
+            isImporting = false
+        }
+    }
+    
+    private func formatJson() {
+        guard let data = responseBody.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data, options: []),
+              let prettyData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted]),
+              let prettyString = String(data: prettyData, encoding: .utf8) else {
+            return
+        }
+        responseBody = prettyString
     }
 }

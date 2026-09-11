@@ -121,7 +121,12 @@ public final class TraceaWebServer: ObservableObject {
         }
         
         if method == "GET" && path == "/api/export/har" {
-            let events = getAllEventsSync()
+            var events = getAllEventsSync()
+            if let eventId = request.queryParameters["id"], !eventId.isEmpty {
+                events = events.filter { $0.id == eventId }
+            } else if let sessionId = request.queryParameters["sessionId"], !sessionId.isEmpty {
+                events = events.filter { $0.sessionId == sessionId }
+            }
             let harString = HarExporter.exportToHarString(events: events)
             return HTTPResponse(statusCode: 200, statusMessage: "OK", headers: [
                 "Content-Type": "application/json",

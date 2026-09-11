@@ -1,4 +1,5 @@
 import Foundation
+import Compression
 import TraceaCore
 
 /// An iOS URLProtocol that captures network requests and responses for Tracea.
@@ -233,8 +234,9 @@ public final class TraceaURLProtocol: URLProtocol, @unchecked Sendable {
         }
         
         let contentType = httpResponse?.value(forHTTPHeaderField: "Content-Type") ?? response.mimeType
+        let contentEncoding = httpResponse?.value(forHTTPHeaderField: "Content-Encoding")
         let responseSize = Int64(responseData.count)
-        let bodyData = extractBody(data: responseData, contentType: contentType, isRequest: false)
+        let bodyData = extractBody(data: responseData, contentType: contentType, contentEncoding: contentEncoding, isRequest: false)
         
         var timing = NetworkTiming(startTimestamp: startMs, endTimestamp: endMs)
         if let taskId = taskId, let capture = Self.timingCapture, let capturedTiming = capture.getTiming(for: taskId) {
@@ -277,9 +279,22 @@ public final class TraceaURLProtocol: URLProtocol, @unchecked Sendable {
         return newEvent
     }
     
-    private func extractBody(data: Data?, contentType: String?, isRequest: Bool) -> BodyData? {
-        guard let data = data else { return nil }
+    private func extractBody(data: Data?, contentType: String?, contentEncoding: String? = nil, isRequest: Bool) -> BodyData? {
+        guard var data = data else { return nil }
         guard let config = Self.config?.bodyCaptureConfig else { return nil }
+        
+        // Handle gzip / deflate decompression for compressed payloads
+        if let encoding = contentEncoding?.lowercased().trimmingCharacters(in: .whitespaces) {
+            if encoding.contains("gzip") {
+                if let decompressed = decompress(data: data, algorithm: COMPRESSION_ZLIB) {
+                    data = decompressed
+                }
+            } else if encoding.contains("deflate") {
+                if let decompressed = decompress(data: data, algorithm: COMPRESSION_ZLIB) {
+                    data = decompressed
+                }
+            }
+        }
         
         let maxSize = isRequest ? config.maxRequestBodySize : config.maxResponseBodySize
         let size = Int64(data.count)
@@ -304,6 +319,29 @@ public final class TraceaURLProtocol: URLProtocol, @unchecked Sendable {
             let text = String(data: data, encoding: .utf8) ?? ""
             return .text(content: text, contentType: parsedType, size: size)
         }
+    }
+    
+    private func decompress(data: Data, algorithm: compression_algorithm) -> Data? {
+        guard !data.isEmpty else { return data }
+        let bufferSize = max(data.count * 4, 4096)
+        var destinationData = Data(count: bufferSize)
+        
+        let decodedSize = destinationData.withUnsafeMutableBytes { (destBytes: UnsafeMutableRawBufferPointer) -> Int in
+            data.withUnsafeBytes { (srcBytes: UnsafeRawBufferPointer) -> Int in
+                compression_decode_buffer(
+                    destBytes.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    destBytes.count,
+                    srcBytes.baseAddress!.assumingMemoryBound(to: UInt8.self),
+                    srcBytes.count,
+                    nil,
+                    algorithm
+                )
+            }
+        }
+        
+        guard decodedSize > 0 else { return nil }
+        destinationData.count = decodedSize
+        return destinationData
     }
 }
 

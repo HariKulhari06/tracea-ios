@@ -44,3 +44,47 @@ public struct FilterChips: View {
         }
     }
 }
+
+/// HTTP method filter options for the network list.
+public enum MethodFilter: String, CaseIterable {
+    case all = "All"
+    case get = "GET"
+    case post = "POST"
+    case put = "PUT"
+    case delete = "DELETE"
+}
+
+/// A horizontally scrollable list of HTTP method filter chips.
+public struct MethodFilterChips: View {
+    public let activeFilter: MethodFilter
+    public let onFilterSelected: (MethodFilter) -> Void
+    
+    public init(activeFilter: MethodFilter, onFilterSelected: @escaping (MethodFilter) -> Void) {
+        self.activeFilter = activeFilter
+        self.onFilterSelected = onFilterSelected
+    }
+    
+    public var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(MethodFilter.allCases, id: \.self) { filter in
+                    let isSelected = activeFilter == filter
+                    
+                    Button(action: {
+                        onFilterSelected(filter)
+                    }) {
+                        Text(filter.rawValue)
+                            .font(.subheadline)
+                            .fontWeight(isSelected ? .bold : .regular)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(isSelected ? DebuggerColors.primary : DebuggerColors.surface)
+                            .foregroundColor(isSelected ? DebuggerColors.background : DebuggerColors.onSurface)
+                            .cornerRadius(16)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+}

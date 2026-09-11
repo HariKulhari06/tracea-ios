@@ -17,6 +17,8 @@ let package = Package(
         .library(name: "TraceaStorage", targets: ["TraceaStorage"]),
         .library(name: "TraceaUI", targets: ["TraceaUI"]),
         .library(name: "TraceaWeb", targets: ["TraceaWeb"]),
+        // No-op library for release builds
+        .library(name: "TraceaNoop", targets: ["TraceaNoop"]),
     ],
     targets: [
         // MARK: - Core Domain Layer
@@ -81,6 +83,12 @@ let package = Package(
                 "TraceaWeb",
             ],
             path: "Sources/Tracea"
+        ),
+
+        // MARK: - No-op Target for Release Builds
+        .target(
+            name: "TraceaNoop",
+            path: "Sources/TraceaNoop"
         ),
 
         // MARK: - Demo App Target

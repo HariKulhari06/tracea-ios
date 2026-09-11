@@ -18,7 +18,7 @@ public struct TraceaConfig: Sendable {
         bodyCaptureConfig: BodyCaptureConfig = BodyCaptureConfig(),
         storageConfig: StorageConfig = StorageConfig(),
         redactionConfig: RedactionConfig = RedactionConfig(),
-        showFloatingButton: Bool = true
+        showFloatingButton: Bool = false
     ) {
         self.enabled = enabled
         self.bodyCaptureConfig = bodyCaptureConfig

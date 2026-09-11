@@ -47,4 +47,18 @@ final class RequestDetailViewModel: ObservableObject {
         guard let event = event else { return Data() }
         return ShareUtility.generateHarFile(for: event)
     }
+    
+    func shareResponseBody() -> String {
+        guard let event = event, let body = event.responseBody else { return "" }
+        switch body {
+        case .text(let content, _, _):
+            return content
+        case .fileReference(let path, _, _):
+            return (try? String(contentsOfFile: path, encoding: .utf8)) ?? "[File: \(path)]"
+        case .truncated(let actualSize, _, _):
+            return "[Response truncated: \(actualSize) bytes]"
+        case .binary(let size, let contentType):
+            return "[Binary data: \(contentType.rawValue), \(size) bytes]"
+        }
+    }
 }

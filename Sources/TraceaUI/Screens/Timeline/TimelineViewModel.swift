@@ -24,6 +24,26 @@ final class TimelineViewModel: ObservableObject {
         return DurationFormatter.format(ms: total)
     }
     
+    var errorCount: Int {
+        events.filter { event in
+            let code = event.statusCode ?? 0
+            return (400...599).contains(code) || event.error != nil
+        }.count
+    }
+    
+    var totalDataTransfer: String {
+        let totalBytes = events.reduce(Int64(0)) { sum, event in
+            sum + event.requestSize + event.responseSize
+        }
+        if totalBytes < 1024 {
+            return "\(totalBytes) B"
+        } else if totalBytes < 1024 * 1024 {
+            return String(format: "%.1f KB", Double(totalBytes) / 1024.0)
+        } else {
+            return String(format: "%.1f MB", Double(totalBytes) / (1024.0 * 1024.0))
+        }
+    }
+    
     var filteredEvents: [NetworkEvent] {
         if searchQuery.isEmpty { return events }
         return events.filter { $0.url.localizedCaseInsensitiveContains(searchQuery) }

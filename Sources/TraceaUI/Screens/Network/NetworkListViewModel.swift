@@ -6,6 +6,7 @@ final class NetworkListViewModel: ObservableObject {
     @Published var events: [NetworkEvent] = []
     @Published var searchQuery = ""
     @Published var activeFilter: StatusFilter = .all
+    @Published var activeMethodFilter: MethodFilter = .all
     @Published var totalCount = 0
     
     var filteredEvents: [NetworkEvent] {
@@ -27,7 +28,20 @@ final class NetworkListViewModel: ObservableObject {
             case .errors:
                 matchesFilter = (400...599).contains(code) || event.error != nil
             }
-            return matchesSearch && matchesFilter
+            let matchesMethod: Bool
+            switch activeMethodFilter {
+            case .all:
+                matchesMethod = true
+            case .get:
+                matchesMethod = event.method == .get
+            case .post:
+                matchesMethod = event.method == .post
+            case .put:
+                matchesMethod = event.method == .put
+            case .delete:
+                matchesMethod = event.method == .delete
+            }
+            return matchesSearch && matchesFilter && matchesMethod
         }
     }
     

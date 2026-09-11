@@ -134,4 +134,134 @@ public final class DemoAPIService {
             .requestBody("{\"event\": \"app_launch\", \"timestamp\": 1700000000}")
             .response(statusCode: 200, headers: ["Content-Type": "application/json"], body: "{\"status\": \"acknowledged\"}")
     }
+    
+    public func timeout() async -> Result<String, Error> {
+        guard let url = URL(string: "http://10.255.255.1") else {
+            return .failure(URLError(.badURL))
+        }
+        let config = URLSessionConfiguration.default
+        var protocols = config.protocolClasses ?? []
+        if !protocols.contains(where: { $0 == TraceaURLProtocol.self }) {
+            protocols.insert(TraceaURLProtocol.self, at: 0)
+        }
+        config.protocolClasses = protocols
+        config.timeoutIntervalForRequest = 5
+        config.timeoutIntervalForResource = 5
+        let timeoutSession = URLSession(configuration: config)
+        do {
+            let (data, response) = try await timeoutSession.data(from: url)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): Received \(data.count) bytes")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    public func largeResponse() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/bytes/500000") else {
+            return .failure(URLError(.badURL))
+        }
+        do {
+            let (data, response) = try await session.data(from: url)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): Large Response (\(data.count) bytes)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    public func postWithBody() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/post") else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let json = """
+        {
+            "id": 123,
+            "items": ["item1", "item2"],
+            "active": true
+        }
+        """
+        req.httpBody = json.data(using: .utf8)
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): POST with JSON Body (\(data.count) bytes)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    public func redactedHeaders() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/get") else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.setValue("Bearer token123456789", forHTTPHeaderField: "Authorization")
+        req.setValue("session_id=abcdef", forHTTPHeaderField: "Cookie")
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): Redacted Headers (\(data.count) bytes)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    public func uploadMultipart() async -> Result<String, Error> {
+        guard let url = URL(string: "https://postman-echo.com/post") else {
+            return .failure(URLError(.badURL))
+        }
+        let boundary = "TraceaBoundary-\(UUID().uuidString)"
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        var body = Data()
+        // userId field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"userId\"\r\n\r\n".data(using: .utf8)!)
+        body.append("1042\r\n".data(using: .utf8)!)
+        // title field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"title\"\r\n\r\n".data(using: .utf8)!)
+        body.append("User Avatar Upload\r\n".data(using: .utf8)!)
+        // description field
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"description\"\r\n\r\n".data(using: .utf8)!)
+        body.append("Tracea multipart upload test\r\n".data(using: .utf8)!)
+        // avatar file part
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"avatar\"; filename=\"avatar.png\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/png\r\n\r\n".data(using: .utf8)!)
+        body.append("FAKE_PNG_BINARY_HEADER_DATA_TRACEA_TEST".data(using: .utf8)!)
+        body.append("\r\n".data(using: .utf8)!)
+        // closing boundary
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        req.httpBody = body
+        
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): Multipart Upload (\(data.count) bytes)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    public func downloadImage() async -> Result<String, Error> {
+        guard let url = URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png") else {
+            return .failure(URLError(.badURL))
+        }
+        do {
+            let (data, response) = try await session.data(from: url)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): Image Download (\(data.count) bytes)")
+        } catch {
+            return .failure(error)
+        }
+    }
 }

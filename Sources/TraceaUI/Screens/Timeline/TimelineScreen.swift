@@ -12,12 +12,21 @@ struct TimelineScreen: View {
             DebuggerColors.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                HStack {
-                    StatView(title: "Requests", value: "\(viewModel.totalRequests)")
-                    Spacer()
-                    StatView(title: "Duration", value: viewModel.formattedDuration)
-                    Spacer()
-                    StatView(title: "Slowest", value: viewModel.slowestFormatted)
+                VStack(spacing: 8) {
+                    HStack {
+                        StatView(title: "Requests", value: "\(viewModel.totalRequests)")
+                        Spacer()
+                        StatView(title: "Errors", value: "\(viewModel.errorCount)")
+                        Spacer()
+                        StatView(title: "Data", value: viewModel.totalDataTransfer)
+                    }
+                    HStack {
+                        StatView(title: "Duration", value: viewModel.formattedDuration)
+                        Spacer()
+                        StatView(title: "Slowest", value: viewModel.slowestFormatted)
+                        Spacer()
+                        Spacer() // balance
+                    }
                 }
                 .padding()
                 .background(DebuggerColors.surface)

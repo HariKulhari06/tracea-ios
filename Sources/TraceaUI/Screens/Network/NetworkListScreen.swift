@@ -14,7 +14,14 @@ struct NetworkListScreen: View {
                 FilterChips(activeFilter: viewModel.activeFilter) { selected in
                     viewModel.activeFilter = selected
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                
+//                MethodFilterChips(activeFilter: viewModel.activeMethodFilter) { selected in
+//                    viewModel.activeMethodFilter = selected
+//                }
+//                .padding(.horizontal)
+//                .padding(.vertical, 4)
                 
                 if viewModel.filteredEvents.isEmpty {
                     Spacer()

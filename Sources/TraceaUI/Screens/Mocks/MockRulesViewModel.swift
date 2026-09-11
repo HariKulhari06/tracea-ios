@@ -7,6 +7,8 @@ final class MockRulesViewModel: ObservableObject {
     @Published var mockingEnabled = false
     @Published var capturedPaths: [String] = []
     
+    @Published var events: [NetworkEvent] = []
+    
     init() {
         self.rules = MockEngine.shared.rules
         self.mockingEnabled = MockEngine.shared.mockingEnabled
@@ -26,7 +28,8 @@ final class MockRulesViewModel: ObservableObject {
         Task {
             if let store = TraceaServiceLocator.shared.store {
                 for await eventsList in store.getAll() {
-                    self.capturedPaths = Array(Set(eventsList.map { $0.path })).sorted()
+                    self.events = eventsList
+                    self.capturedPaths = Array(Set(eventsList.map { $0.path })).filter { !$0.isEmpty }.sorted()
                 }
             }
         }
@@ -48,7 +51,33 @@ final class MockRulesViewModel: ObservableObject {
         MockEngine.shared.updateRule(rule)
     }
     
-    func getResponseBodyForPath(_ path: String) -> String? {
-        return nil
+    func getResponseBodyForPath(_ rawPath: String) async -> String? {
+        let cleanPath = rawPath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanPath.isEmpty else { return nil }
+        
+        // Check current cached events first, sorted by most recent
+        let candidateEvents = events.sorted { $0.timestamp > $1.timestamp }
+        
+        // Try exact path match first, then case-insensitive, then suffix/contains
+        let matchingEvent = candidateEvents.first { event in
+            guard event.responseBody != nil else { return false }
+            return event.path == cleanPath ||
+                   event.path.lowercased() == cleanPath.lowercased() ||
+                   cleanPath.contains(event.path) ||
+                   event.path.contains(cleanPath) ||
+                   event.url.contains(cleanPath)
+        }
+        
+        guard let body = matchingEvent?.responseBody else { return nil }
+        switch body {
+        case .text(let content, _, _):
+            return content
+        case .fileReference(let path, _, _):
+            return try? String(contentsOfFile: path, encoding: .utf8)
+        case .truncated(let actualSize, _, _):
+            return "[Response was truncated (\(actualSize) bytes)]"
+        case .binary(let size, let contentType):
+            return "[Binary \(contentType.rawValue): \(size) bytes]"
+        }
     }
 }

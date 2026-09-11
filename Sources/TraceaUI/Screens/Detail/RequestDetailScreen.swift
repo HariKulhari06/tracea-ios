@@ -73,6 +73,12 @@ struct RequestDetailScreen: View {
                     }) {
                         Label("Share HAR", systemImage: "square.and.arrow.up.doc")
                     }
+                    Button(action: {
+                        let body = viewModel.shareResponseBody()
+                        ShareUtility.shareText(body)
+                    }) {
+                        Label("Share Response Body", systemImage: "doc.text")
+                    }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                 }
