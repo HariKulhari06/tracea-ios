@@ -36,18 +36,6 @@ public final class TraceaNoop {
         // No-op
     }
     
-    /// Start the embedded Web Dashboard server (no-op in release builds).
-    @discardableResult
-    public func startWebServer(port: UInt16 = 8080) -> Bool { false }
-    
-    /// Stop the embedded Web Dashboard server (no-op in release builds).
-    public func stopWebServer() {
-        // No-op
-    }
-    
-    /// Get the local network URL for the Web Dashboard (empty in release builds).
-    public func getWebDashboardURL() -> String { "" }
-    
     /// Enable or disable the floating debug button (no-op in release builds).
     public func setFloatingButtonEnabled(_ enabled: Bool) {
         // No-op

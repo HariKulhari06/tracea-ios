@@ -9,7 +9,7 @@
 A modular in-app HTTP/HTTPS network inspection and API mocking library for iOS, written in pure Swift and SwiftUI.
 
 > [!NOTE]
-> This project is a feature-complete iOS counterpart to the **Tracea Android** library, sharing identical UI styling, feature sets, and embedded web dashboard features.
+> This project is a feature-complete iOS counterpart to the **Tracea Android** library, sharing identical UI styling and feature sets.
 
 ---
 
@@ -24,8 +24,6 @@ A modular in-app HTTP/HTTPS network inspection and API mocking library for iOS, 
   - Request/Response Details with Pretty JSON viewer & cURL generator
   - Timeline waterfall view
   - Mock Rules editor
-  - Embedded Web Dashboard controller & Settings
-- 🌐 **Embedded Web Dashboard** (NWListener HTTP/WebSocket server running on port 8080)
 - 📝 **Manual Capture API** for custom network layers outside `URLSession`
 - 💾 **Hybrid Persistence** (small payloads inline, large payloads on disk, auto 5-session retention)
 
@@ -39,7 +37,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/HariKulhari06/tracea-ios.git", from: "1.0.0")
+    .package(url: "https://github.com/HariKulhari06/tracea-ios.git", from: "1.1.0")
 ]
 ```
 
@@ -84,13 +82,6 @@ call?.requestHeaders(["Content-Type": "application/json"])
     .response(statusCode: 200, body: "{\"status\": \"success\"}")
 ```
 
-### 3. Open Web Dashboard
-
-```swift
-Tracea.shared.startWebServer(port: 8080)
-print("Dashboard URL: \(Tracea.shared.getWebDashboardURL())")
-```
-
 ---
 
 ## Project Structure
@@ -103,7 +94,6 @@ tracea-ios/
 │   ├── TraceaInterceptor/       # URLProtocol interceptor & timing capture
 │   ├── TraceaManual/            # Manual capture builder API
 │   ├── TraceaStorage/           # Persistent & in-memory event stores with retention
-│   ├── TraceaWeb/               # Lightweight NWListener HTTP/WebSocket server & SPA
 │   ├── TraceaUI/                # SwiftUI debug views, view models & floating button
 │   └── Tracea/                  # Public umbrella facade
 └── Tests/

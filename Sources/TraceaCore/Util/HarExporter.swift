@@ -49,6 +49,7 @@ public enum HarExporter {
                 }
             }
             request["headers"] = reqHeaders
+            request["cookies"] = [[String: String]]()
             
             var queryString = [[String: String]]()
             for (key, value) in event.queryParameters {
@@ -82,6 +83,7 @@ public enum HarExporter {
                 }
             }
             response["headers"] = resHeaders
+            response["cookies"] = [[String: String]]()
             
             var content = [String: Any]()
             content["size"] = event.responseSize
@@ -103,7 +105,7 @@ public enum HarExporter {
             "version": "1.2",
             "creator": [
                 "name": "Tracea iOS",
-                "version": "1.0.0"
+                "version": "1.1.0"
             ],
             "entries": entries
         ]

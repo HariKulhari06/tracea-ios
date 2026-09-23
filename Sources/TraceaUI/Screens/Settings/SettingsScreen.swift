@@ -39,9 +39,9 @@ struct SettingsScreen: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.0.0").foregroundColor(.secondary)
+                        Text("1.1.0").foregroundColor(.secondary)
                     }
-                    Link("GitHub Repository", destination: URL(string: "https://github.com/hari/tracea-ios")!)
+                    Link("GitHub Repository", destination: URL(string: "https://github.com/HariKulhari06/tracea-ios")!)
                 }
             }
             .scrollContentBackground(.hidden)

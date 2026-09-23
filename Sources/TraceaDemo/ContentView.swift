@@ -4,8 +4,6 @@ import Tracea
 struct ContentView: View {
     private let api = DemoAPIService()
     @State private var statusText: String = "Tap any button to trigger network events"
-    @State private var isWebServerRunning: Bool = false
-    @State private var webDashboardURL: String = ""
     @State private var isRunningAll: Bool = false
     
     var body: some View {
@@ -29,38 +27,6 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
-                    
-                    // Web Server Status Card
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Embedded Web Server")
-                                .font(.headline)
-                            Spacer()
-                            Toggle("", isOn: $isWebServerRunning)
-                                .onChange(of: isWebServerRunning) { newValue in
-                                    if newValue {
-                                        Tracea.shared.startWebServer(port: 8080)
-                                        webDashboardURL = Tracea.shared.getWebDashboardURL()
-                                    } else {
-                                        Tracea.shared.stopWebServer()
-                                        webDashboardURL = ""
-                                    }
-                                }
-                                .labelsHidden()
-                        }
-                        
-                        if isWebServerRunning {
-                            Text("URL: \(webDashboardURL)")
-                                .font(.caption.monospaced())
-                                .foregroundColor(.green)
-                            Text("Open this URL in Mac browser on same Wi-Fi")
-                                .font(.caption2)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding()
-                    .background(Color.gray.opacity(0.15))
-                    .cornerRadius(12)
                     
                     // Status Output Banner
                     Text(statusText)

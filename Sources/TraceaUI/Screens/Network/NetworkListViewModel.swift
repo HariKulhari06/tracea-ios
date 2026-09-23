@@ -77,6 +77,8 @@ final class NetworkListViewModel: ObservableObject {
     }
     
     func exportSessionHar(sessionId: String) -> String {
+        // Use the full (unfiltered) events list — not filteredEvents — to ensure
+        // complete session export regardless of any active search or status filters.
         let sessionEvents = events.filter { $0.sessionId == sessionId }
         return HarExporter.exportToHarString(events: sessionEvents)
     }

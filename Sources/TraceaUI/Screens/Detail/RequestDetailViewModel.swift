@@ -48,6 +48,20 @@ final class RequestDetailViewModel: ObservableObject {
         return ShareUtility.generateHarFile(for: event)
     }
     
+    var hasResponseBody: Bool {
+        guard let event = event, let body = event.responseBody else { return false }
+        switch body {
+        case .text(let content, _, _):
+            return !content.isEmpty
+        case .fileReference:
+            return true
+        case .truncated:
+            return true
+        case .binary:
+            return true
+        }
+    }
+    
     func shareResponseBody() -> String {
         guard let event = event, let body = event.responseBody else { return "" }
         switch body {

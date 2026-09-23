@@ -16,7 +16,6 @@ let package = Package(
         .library(name: "TraceaManual", targets: ["TraceaManual"]),
         .library(name: "TraceaStorage", targets: ["TraceaStorage"]),
         .library(name: "TraceaUI", targets: ["TraceaUI"]),
-        .library(name: "TraceaWeb", targets: ["TraceaWeb"]),
         // No-op library for release builds
         .library(name: "TraceaNoop", targets: ["TraceaNoop"]),
     ],
@@ -53,20 +52,11 @@ let package = Package(
             path: "Sources/TraceaStorage"
         ),
 
-        // MARK: - Embedded Web Server & Dashboard
-        // Minimal NWListener-based HTTP/WebSocket server + browser SPA dashboard.
-        .target(
-            name: "TraceaWeb",
-            dependencies: ["TraceaCore", "TraceaStorage"],
-            path: "Sources/TraceaWeb",
-            resources: [.process("Resources")]
-        ),
-
         // MARK: - SwiftUI Inspector Interface
         // Full SwiftUI debugger UI: network list, detail views, mock rules, timeline, settings.
         .target(
             name: "TraceaUI",
-            dependencies: ["TraceaCore", "TraceaStorage", "TraceaWeb"],
+            dependencies: ["TraceaCore", "TraceaStorage"],
             path: "Sources/TraceaUI"
         ),
 
@@ -80,7 +70,6 @@ let package = Package(
                 "TraceaManual",
                 "TraceaStorage",
                 "TraceaUI",
-                "TraceaWeb",
             ],
             path: "Sources/Tracea"
         ),

@@ -5,7 +5,6 @@ public enum DebuggerRoute: Hashable {
     case networkList
     case requestDetail(eventId: String)
     case mockRules
-    case webDashboard
     case timeline
     case settings
 }
@@ -14,7 +13,6 @@ public enum DebuggerRoute: Hashable {
 public enum DebuggerTab: String, CaseIterable {
     case network = "Network"
     case mocks = "Mocks"
-    case web = "PC Web"
 }
 
 /// The root view for the Tracea Debugger.
@@ -61,24 +59,6 @@ public struct TraceaRootView: View {
                 Label("Mocks", systemImage: "slider.horizontal.3")
             }
             .tag(DebuggerTab.mocks)
-            
-            NavigationStack {
-                WebDashboardScreen()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button {
-                                dismiss()
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(DebuggerColors.onSurface)
-                            }
-                        }
-                    }
-            }
-            .tabItem {
-                Label("PC Web", systemImage: "laptopcomputer")
-            }
-            .tag(DebuggerTab.web)
         }
         .debuggerTheme()
         .preferredColorScheme(.dark)

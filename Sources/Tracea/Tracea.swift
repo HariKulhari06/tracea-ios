@@ -7,7 +7,6 @@ import UIKit
 @_exported import TraceaInterceptor
 @_exported import TraceaManual
 @_exported import TraceaUI
-@_exported import TraceaWeb
 
 /// The master entry point and coordinator for the Tracea iOS SDK.
 public final class Tracea: @unchecked Sendable {
@@ -68,12 +67,11 @@ public final class Tracea: @unchecked Sendable {
         TraceaURLProtocol.config = config
         TraceaURLProtocol.register()
         
-        // 5. Service Locator & Web Server Wireup
+        // 5. Service Locator Wireup
         TraceaServiceLocator.shared.store = actualStore
         TraceaServiceLocator.shared.config = config
         TraceaServiceLocator.shared.sessionId = DebuggerSession.shared.sessionId
         TraceaServiceLocator.shared.sessionName = DebuggerSession.shared.sessionName
-        TraceaWebServer.shared.store = actualStore
         
         // 6. Reactive Pipeline
         startPipeline(actualStore: actualStore)
@@ -163,20 +161,5 @@ public final class Tracea: @unchecked Sendable {
     /// Clears all recorded events from storage.
     public func clear() async {
         await store?.clear()
-    }
-    
-    /// Starts the embedded web dashboard server.
-    public func startWebServer(port: UInt16 = 8080) {
-        TraceaWebServer.shared.start(port: port)
-    }
-    
-    /// Stops the embedded web dashboard server.
-    public func stopWebServer() {
-        TraceaWebServer.shared.stop()
-    }
-    
-    /// Returns the LAN dashboard URL of the web server.
-    public func getWebDashboardURL() -> String {
-        return TraceaWebServer.shared.getDashboardURL()
     }
 }
