@@ -37,7 +37,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/HariKulhari06/tracea-ios.git", from: "1.1.0")
+    .package(url: "https://github.com/HariKulhari06/tracea-ios.git", from: "1.1.1")
 ]
 ```
 

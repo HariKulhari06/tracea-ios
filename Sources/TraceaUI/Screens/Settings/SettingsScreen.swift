@@ -39,7 +39,7 @@ struct SettingsScreen: View {
                     HStack {
                         Text("Version")
                         Spacer()
-                        Text("1.1.0").foregroundColor(.secondary)
+                        Text("1.1.1").foregroundColor(.secondary)
                     }
                     Link("GitHub Repository", destination: URL(string: "https://github.com/HariKulhari06/tracea-ios")!)
                 }

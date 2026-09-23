@@ -51,6 +51,7 @@ public struct SessionHeader: View {
                     
                     Spacer()
                 }
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
             

@@ -4,7 +4,7 @@ import TraceaCore
 struct NetworkListScreen: View {
     @StateObject private var viewModel = NetworkListViewModel()
     @State private var showingClearAlert = false
-    @State private var expandedSessions: Set<String> = []
+    @State private var collapsedSessions: Set<String> = []
     
     var body: some View {
         ZStack {
@@ -31,17 +31,19 @@ struct NetworkListScreen: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
                             ForEach(viewModel.groupedBySession, id: \.sessionId) { group in
-                                let isExpanded = expandedSessions.contains(group.sessionId) || expandedSessions.isEmpty
+                                let isExpanded = !collapsedSessions.contains(group.sessionId)
                                 VStack(alignment: .leading, spacing: 0) {
                                     SessionHeader(
                                         sessionName: group.sessionName,
                                         requestCount: group.events.count,
                                         isExpanded: isExpanded,
                                         onToggle: {
-                                            if expandedSessions.contains(group.sessionId) {
-                                                expandedSessions.remove(group.sessionId)
-                                            } else {
-                                                expandedSessions.insert(group.sessionId)
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                if collapsedSessions.contains(group.sessionId) {
+                                                    collapsedSessions.remove(group.sessionId)
+                                                } else {
+                                                    collapsedSessions.insert(group.sessionId)
+                                                }
                                             }
                                         },
                                         onShare: {
