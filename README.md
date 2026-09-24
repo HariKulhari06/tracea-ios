@@ -16,14 +16,18 @@ A modular in-app HTTP/HTTPS network inspection and API mocking library for iOS, 
 ## Features
 
 - 🔍 **Automatic URLSession Interception** via `URLProtocol` (No code changes in your network client)
-- ⏱️ **Timing Metrics** (DNS, TCP, TLS, TTFB, Download) using native `URLSessionTaskMetrics`
-- 🎭 **Mock Engine** with path matching, custom status codes, delays, and dynamic JSON responses
+- 🌐 **Domain Filtering (Allowed & Ignored)**: Restrict capture to your backend APIs (`api.test.com`, `*.domain.com`) and suppress noisy telemetry (`*.firebaseio.com`, `*.sentry.io`)
+- ⏱️ **Timing Metrics & Waterfall** (DNS, TCP, TLS, TTFB, Download) using native `URLSessionTaskMetrics`
+- 🎭 **Mock Engine** with path matching, custom status codes, delays, live endpoint import, and dynamic JSON responses
 - 🛡️ **Privacy Redaction** for sensitive headers (Authorization, Cookie, API keys) and recursive JSON fields
-- 📊 **SwiftUI Debugger UI** with dark theme matching Android:
-  - Network List with status/method filtering & session grouping
+- 🚀 **High-Traffic Coalescing**: Smooth 60fps performance during high-frequency API bursts (150+ calls)
+- 🔘 **Draggable Floating HUD Button**: Spring snap-to-edge, live request count badge, and custom image/symbol support
+- 📊 **SwiftUI Debugger UI** with dark developer theme:
+  - Network List with persistent search, status/method filtering & session grouping
   - Request/Response Details with Pretty JSON viewer & cURL generator
   - Timeline waterfall view
   - Mock Rules editor
+  - Domain Filtering settings
 - 📝 **Manual Capture API** for custom network layers outside `URLSession`
 - 💾 **Hybrid Persistence** (small payloads inline, large payloads on disk, auto 5-session retention)
 
@@ -37,7 +41,7 @@ Add the package to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/HariKulhari06/tracea-ios.git", from: "1.1.1")
+    .package(url: "https://github.com/HariKulhari06/tracea-ios.git", from: "1.2.0")
 ]
 ```
 

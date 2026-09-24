@@ -62,29 +62,43 @@ public final class Tracea: @unchecked Sendable {
         MockEngine.shared.initialize(directory: mockDir)
         DebuggerSession.shared.startNewSession()
         
-        // 4. Interceptor Wireup
+        // 4. Load persisted domain filters if available
+        var activeConfig = config
+        if let savedAllowed = UserDefaults.standard.stringArray(forKey: "tracea_allowed_domains"), !savedAllowed.isEmpty {
+            activeConfig.allowedDomains = savedAllowed
+        }
+        if let savedIgnored = UserDefaults.standard.stringArray(forKey: "tracea_ignored_domains"), !savedIgnored.isEmpty {
+            activeConfig.ignoredDomains = savedIgnored
+        }
+        self.config = activeConfig
+        
+        // 5. Interceptor Wireup
         TraceaURLProtocol.collector = collector
-        TraceaURLProtocol.config = config
+        TraceaURLProtocol.config = activeConfig
         TraceaURLProtocol.register()
         
-        // 5. Service Locator Wireup
+        // 6. Service Locator Wireup
         TraceaServiceLocator.shared.store = actualStore
-        TraceaServiceLocator.shared.config = config
+        TraceaServiceLocator.shared.config = activeConfig
         TraceaServiceLocator.shared.sessionId = DebuggerSession.shared.sessionId
         TraceaServiceLocator.shared.sessionName = DebuggerSession.shared.sessionName
+        
+        // Listen for runtime domain filter updates from UI
+        NotificationCenter.default.addObserver(forName: Notification.Name("TraceaDomainFilterChanged"), object: nil, queue: .main) { _ in
+            let newFilter = TraceaServiceLocator.shared.config.domainFilterConfig
+            TraceaURLProtocol.config?.domainFilterConfig = newFilter
+        }
         
         // 6. Reactive Pipeline
         startPipeline(actualStore: actualStore)
         
         // 7. Floating Overlay Setup
         #if canImport(UIKit)
-        if config.showFloatingButton {
-            Task { @MainActor in
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-                    FloatingButtonManager.shared.install(in: windowScene)
-                }
-            }
-        }
+        let showButton = UserDefaults.standard.object(forKey: "floatingButton") != nil
+            ? UserDefaults.standard.bool(forKey: "floatingButton")
+            : config.showFloatingButton
+        
+        FloatingButtonManager.shared.setEnabled(showButton)
         #endif
         
         self.initialized = true
@@ -100,6 +114,11 @@ public final class Tracea: @unchecked Sendable {
                 guard !Task.isCancelled else { break }
                 let redactedEvent = redactionEngine.redactEvent(event)
                 await actualStore.insert(redactedEvent)
+                
+                #if canImport(UIKit)
+                let count = await actualStore.getCount()
+                FloatingButtonManager.shared.updateRequestCount(count)
+                #endif
             }
         }
     }

@@ -29,7 +29,7 @@ public struct SectionHeader: View {
                 }
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
     }
 }

@@ -2,6 +2,8 @@ import SwiftUI
 import TraceaCore
 
 /// A row of summary cards for a network event.
+/// Uses a balanced 2x2 grid (or 4-column adaptive layout) ensuring all cards
+/// have identical dimensions, alignment, and pixel-perfect proportions.
 public struct SummaryCardsRow: View {
     public let event: NetworkEvent
     
@@ -9,44 +11,63 @@ public struct SummaryCardsRow: View {
         self.event = event
     }
     
+    private let columns = [
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
+    ]
+    
     public var body: some View {
-        HStack(spacing: 12) {
+        LazyVGrid(columns: columns, spacing: 10) {
+            // Status Card
             SummaryCard(
-                icon: "number.circle.fill",
-                label: "Status",
-                value: event.statusCode != nil ? "\(event.statusCode!)" : "---",
-                color: DebuggerColors.statusColor(event.statusCode)
+                icon: "checkmark.shield.fill",
+                label: "STATUS",
+                value: statusText,
+                color: DebuggerColors.statusColor(event.statusCode),
+                badgeColor: DebuggerColors.statusColor(event.statusCode)
             )
             
+            // Duration Card
             let totalMs = event.timing?.totalMs ?? 0
             SummaryCard(
-                icon: "clock.fill",
-                label: "Duration",
+                icon: "timer",
+                label: "DURATION",
                 value: DurationFormatter.format(ms: totalMs),
-                color: DebuggerColors.primary
+                color: DebuggerColors.primary,
+                badgeColor: nil
             )
             
+            // Size Card
             let totalSize = event.requestSize + event.responseSize
             SummaryCard(
-                icon: "arrow.up.arrow.down.circle.fill",
-                label: "Size",
+                icon: "arrow.up.arrow.down",
+                label: "TOTAL SIZE",
                 value: SizeFormatter.format(bytes: totalSize),
-                color: DebuggerColors.primary
+                color: Color(hex: 0x569CD6),
+                badgeColor: nil
             )
             
-            let timeString = {
-                let formatter = DateFormatter()
-                formatter.dateFormat = "HH:mm:ss"
-                return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000.0))
-            }()
-            
+            // Time Card
             SummaryCard(
-                icon: "calendar.circle.fill",
-                label: "Time",
-                value: timeString,
-                color: DebuggerColors.onSurfaceVariant
+                icon: "clock",
+                label: "TIME",
+                value: TraceaFormatters.timeString(from: event.timestamp),
+                color: DebuggerColors.onSurfaceVariant,
+                badgeColor: nil
             )
         }
+    }
+    
+    private var statusText: String {
+        if let code = event.statusCode {
+            if let msg = event.statusMessage, !msg.isEmpty {
+                return "\(code) \(msg)"
+            }
+            return "\(code)"
+        } else if event.error != nil {
+            return "Failed"
+        }
+        return "Pending"
     }
 }
 
@@ -55,27 +76,41 @@ fileprivate struct SummaryCard: View {
     let label: String
     let value: String
     let color: Color
+    let badgeColor: Color?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.caption2)
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(color)
+                    .frame(width: 14, height: 14)
+                
                 Text(label)
-                    .font(.caption2)
-                    .foregroundColor(DebuggerColors.onSurface)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(DebuggerColors.onSurfaceVariant)
+                    .tracking(0.5)
+                
+                Spacer(minLength: 0)
             }
-            Text(value)
-                .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(DebuggerColors.onBackground)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            
+            HStack {
+                Text(value)
+                    .font(.system(size: 15, weight: .bold, design: .monospaced))
+                    .foregroundColor(badgeColor ?? DebuggerColors.onBackground)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                
+                Spacer(minLength: 0)
+            }
         }
-        .padding(8)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
         .background(DebuggerColors.surface)
-        .cornerRadius(8)
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(DebuggerColors.divider, lineWidth: 1)
+        )
     }
 }

@@ -57,7 +57,16 @@ public final class TraceaURLProtocol: URLProtocol, @unchecked Sendable {
             return false
         }
         
-        return ["http", "https"].contains(request.url?.scheme?.lowercased() ?? "")
+        guard ["http", "https"].contains(request.url?.scheme?.lowercased() ?? "") else {
+            return false
+        }
+        
+        // Check Domain Filter (Allowed / Ignored domains)
+        guard config.domainFilterConfig.shouldCapture(url: request.url) else {
+            return false
+        }
+        
+        return true
     }
     
     public override class func canonicalRequest(for request: URLRequest) -> URLRequest {

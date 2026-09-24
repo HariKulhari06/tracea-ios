@@ -264,4 +264,34 @@ public final class DemoAPIService {
             return .failure(error)
         }
     }
+    
+    /// Emits a high-volume burst of network events (e.g. 150+ calls) to benchmark UI and collector performance
+    public func runStressTestCalls(count: Int = 150) {
+        let methods = ["GET", "POST", "PUT", "DELETE"]
+        let statusCodes = [200, 201, 304, 400, 404, 500]
+        
+        for i in 1...count {
+            let method = methods[i % methods.count]
+            let status = statusCodes[i % statusCodes.count]
+            let call = Tracea.shared.startRequest(
+                method: method,
+                url: "https://api.example.com/v1/resource/\(i)?batch=stress&index=\(i)"
+            )
+            call?.requestHeaders([
+                "Authorization": "Bearer secret_user_token_\(i)",
+                "X-Batch-Index": "\(i)"
+            ])
+            
+            if method == "POST" || method == "PUT" {
+                call?.requestBody("{\"id\": \(i), \"item\": \"resource_\(i)\", \"timestamp\": \(Int64(Date().timeIntervalSince1970))}", contentType: "application/json")
+            }
+            
+            call?.response(
+                statusCode: status,
+                headers: ["Content-Type": "application/json", "X-Response-Time": "\(i * 2)ms"],
+                body: "{\"status\": \"ok\", \"code\": \(status), \"id\": \(i)}",
+                contentType: "application/json"
+            )
+        }
+    }
 }

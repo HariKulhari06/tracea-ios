@@ -40,5 +40,15 @@ public final class TraceaViewController: UIHostingController<TraceaRootView> {
         UITabBar.appearance().standardAppearance = tabBarApp
         UITabBar.appearance().scrollEdgeAppearance = tabBarApp
     }
+    
+    public override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        FloatingButtonManager.shared.setWindowHidden(true)
+    }
+    
+    public override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        FloatingButtonManager.shared.setWindowHidden(false)
+    }
 }
 #endif

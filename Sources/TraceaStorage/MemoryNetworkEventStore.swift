@@ -3,16 +3,30 @@ import TraceaCore
 
 public final actor MemoryNetworkEventStore: NetworkEventStore {
     private var events: [NetworkEvent] = []
+    private var eventIndexMap: [String: Int] = [:]
     
     private var continuations: [UUID: AsyncStream<[NetworkEvent]>.Continuation] = [:]
     
     public init() {}
     
+    private func rebuildIndexMap() {
+        var map = [String: Int]()
+        map.reserveCapacity(events.count)
+        for (idx, event) in events.enumerated() {
+            map[event.id] = idx
+        }
+        self.eventIndexMap = map
+    }
+    
     public func insert(_ event: NetworkEvent) {
-        if let index = events.firstIndex(where: { $0.id == event.id }) {
+        if let index = eventIndexMap[event.id], index < events.count, events[index].id == event.id {
             events[index] = event
+        } else if let index = events.firstIndex(where: { $0.id == event.id }) {
+            events[index] = event
+            eventIndexMap[event.id] = index
         } else {
             events.insert(event, at: 0)
+            rebuildIndexMap()
         }
         notifySubscribers()
     }
@@ -22,6 +36,9 @@ public final actor MemoryNetworkEventStore: NetworkEventStore {
     }
     
     public func get(id: String) -> NetworkEvent? {
+        if let idx = eventIndexMap[id], idx < events.count, events[idx].id == id {
+            return events[idx]
+        }
         return events.first { $0.id == id }
     }
     
@@ -67,11 +84,13 @@ public final actor MemoryNetworkEventStore: NetworkEventStore {
     
     public func clear() {
         events.removeAll()
+        eventIndexMap.removeAll()
         notifySubscribers()
     }
     
     public func delete(id: String) {
         events.removeAll { $0.id == id }
+        rebuildIndexMap()
         notifySubscribers()
     }
     
@@ -81,6 +100,7 @@ public final actor MemoryNetworkEventStore: NetworkEventStore {
     
     public func deleteSession(sessionId: String) {
         events.removeAll { $0.sessionId == sessionId }
+        rebuildIndexMap()
         notifySubscribers()
     }
     

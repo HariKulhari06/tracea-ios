@@ -19,7 +19,9 @@ struct RequestDetailScreen: View {
             VStack(spacing: 0) {
                 if let event = viewModel.event {
                     SummaryCardsRow(event: event)
-                        .padding()
+                        .padding(.horizontal)
+                        .padding(.top, 12)
+                        .padding(.bottom, 10)
                     
                     Picker("Tab", selection: $viewModel.selectedTab) {
                         ForEach(DetailTab.allCases, id: \.self) { tab in
@@ -28,8 +30,9 @@ struct RequestDetailScreen: View {
                     }
                     .pickerStyle(SegmentedPickerStyle())
                     .padding(.horizontal)
+                    .padding(.bottom, 8)
                     
-                    Divider().padding(.top)
+                    Divider().background(DebuggerColors.divider)
                     
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {

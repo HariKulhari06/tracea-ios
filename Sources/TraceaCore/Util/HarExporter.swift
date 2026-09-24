@@ -11,7 +11,7 @@ public enum HarExporter {
             var entry = [String: Any]()
             
             // Timing setup
-            let startedDateTime = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: TimeInterval(event.timestamp) / 1000.0))
+            let startedDateTime = TraceaFormatters.iso8601String(from: event.timestamp)
             entry["startedDateTime"] = startedDateTime
             
             var time: Int64 = 0
@@ -105,7 +105,7 @@ public enum HarExporter {
             "version": "1.2",
             "creator": [
                 "name": "Tracea iOS",
-                "version": "1.1.1"
+                "version": "1.2.0"
             ],
             "entries": entries
         ]

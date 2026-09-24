@@ -15,12 +15,13 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
     private let bodyStorage: BodyFileStorage
     
     private var events: [NetworkEvent] = []
+    private var eventIndexMap: [String: Int] = [:]
     private var index: [EventIndexInfo] = []
     private var continuations: [UUID: AsyncStream<[NetworkEvent]>.Continuation] = [:]
+    private var pendingIndexSaveTask: Task<Void, Never>? = nil
     
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
         return encoder
     }()
     private let decoder = JSONDecoder()
@@ -28,73 +29,108 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
     public init(directory: URL, config: StorageConfig) {
         self.directory = directory
         self.config = config
-        self.eventsDirectory = directory.appendingPathComponent("events")
-        self.indexFile = directory.appendingPathComponent("index.json")
-        self.bodyStorage = BodyFileStorage(directory: directory.appendingPathComponent("bodies"))
+        let eventsDir = directory.appendingPathComponent("events")
+        let indexF = directory.appendingPathComponent("index.json")
+        let bStorage = BodyFileStorage(directory: directory.appendingPathComponent("bodies"))
+        self.eventsDirectory = eventsDir
+        self.indexFile = indexF
+        self.bodyStorage = bStorage
         
-        try? FileManager.default.createDirectory(at: self.eventsDirectory, withIntermediateDirectories: true, attributes: nil)
+        try? FileManager.default.createDirectory(at: eventsDir, withIntermediateDirectories: true, attributes: nil)
         
-        self.loadEventsSync()
+        let (loadedEvents, loadedIndex) = Self.loadEvents(eventsDirectory: eventsDir, indexFile: indexF, bodyStorage: bStorage, decoder: decoder)
+        self.events = loadedEvents
+        self.index = loadedIndex
+        
+        var map = [String: Int]()
+        map.reserveCapacity(loadedEvents.count)
+        for (idx, event) in loadedEvents.enumerated() {
+            map[event.id] = idx
+        }
+        self.eventIndexMap = map
     }
     
-    private func loadEventsSync() {
-        do {
-            if let indexData = try? Data(contentsOf: indexFile),
-               let loadedIndex = try? decoder.decode([EventIndexInfo].self, from: indexData) {
-                self.index = loadedIndex
+    private func rebuildIndexMap() {
+        var map = [String: Int]()
+        map.reserveCapacity(events.count)
+        for (idx, event) in events.enumerated() {
+            map[event.id] = idx
+        }
+        self.eventIndexMap = map
+    }
+    
+    private static func loadEvents(
+        eventsDirectory: URL,
+        indexFile: URL,
+        bodyStorage: BodyFileStorage,
+        decoder: JSONDecoder
+    ) -> ([NetworkEvent], [EventIndexInfo]) {
+        guard let indexData = try? Data(contentsOf: indexFile),
+              let loadedIndex = try? decoder.decode([EventIndexInfo].self, from: indexData) else {
+            return ([], [])
+        }
+        
+        var loadedEvents: [NetworkEvent] = []
+        for info in loadedIndex {
+            let eventFile = eventsDirectory.appendingPathComponent("\(info.id).json")
+            if let eventData = try? Data(contentsOf: eventFile),
+               var event = try? decoder.decode(NetworkEvent.self, from: eventData) {
                 
-                var loadedEvents: [NetworkEvent] = []
-                for info in loadedIndex {
-                    let eventFile = eventsDirectory.appendingPathComponent("\(info.id).json")
-                    if let eventData = try? Data(contentsOf: eventFile),
-                       var event = try? decoder.decode(NetworkEvent.self, from: eventData) {
-                        
-                        if case let .fileReference(path, contentType, size) = event.requestBody {
-                            if let restoredBody = bodyStorage.retrieveBody(reference: path), case let .text(content, _, _) = restoredBody {
-                                event.requestBody = .text(content: content, contentType: contentType, size: size)
-                            }
-                        }
-                        
-                        if case let .fileReference(path, contentType, size) = event.responseBody {
-                            if let restoredBody = bodyStorage.retrieveBody(reference: path), case let .text(content, _, _) = restoredBody {
-                                event.responseBody = .text(content: content, contentType: contentType, size: size)
-                            }
-                        }
-                        
-                        loadedEvents.append(event)
+                if case let .fileReference(path, contentType, size) = event.requestBody {
+                    if let restoredBody = bodyStorage.retrieveBody(reference: path), case let .text(content, _, _) = restoredBody {
+                        event.requestBody = .text(content: content, contentType: contentType, size: size)
                     }
                 }
-                self.events = loadedEvents.sorted { $0.timestamp > $1.timestamp }
+                
+                if case let .fileReference(path, contentType, size) = event.responseBody {
+                    if let restoredBody = bodyStorage.retrieveBody(reference: path), case let .text(content, _, _) = restoredBody {
+                        event.responseBody = .text(content: content, contentType: contentType, size: size)
+                    }
+                }
+                
+                loadedEvents.append(event)
             }
         }
+        return (loadedEvents.sorted { $0.timestamp > $1.timestamp }, loadedIndex)
     }
     
     public func insert(_ event: NetworkEvent) {
-        if let idx = events.firstIndex(where: { $0.id == event.id }) {
+        if let idx = eventIndexMap[event.id], idx < events.count, events[idx].id == event.id {
             events[idx] = event
+        } else if let idx = events.firstIndex(where: { $0.id == event.id }) {
+            events[idx] = event
+            eventIndexMap[event.id] = idx
         } else {
             events.insert(event, at: 0)
+            rebuildIndexMap()
         }
         
         saveEventToFile(event)
-        updateIndex()
+        scheduleIndexUpdate()
         enforceRetention()
         notifySubscribers()
     }
     
     public func update(_ event: NetworkEvent) {
-        if let idx = events.firstIndex(where: { $0.id == event.id }) {
+        if let idx = eventIndexMap[event.id], idx < events.count, events[idx].id == event.id {
             events[idx] = event
+        } else if let idx = events.firstIndex(where: { $0.id == event.id }) {
+            events[idx] = event
+            eventIndexMap[event.id] = idx
         } else {
             events.insert(event, at: 0)
+            rebuildIndexMap()
         }
         
         saveEventToFile(event)
-        updateIndex()
+        scheduleIndexUpdate()
         notifySubscribers()
     }
     
     public func get(id: String) -> NetworkEvent? {
+        if let idx = eventIndexMap[id], idx < events.count, events[idx].id == id {
+            return events[idx]
+        }
         return events.first { $0.id == id }
     }
     
@@ -140,6 +176,7 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
     
     public func clear() {
         events.removeAll()
+        eventIndexMap.removeAll()
         index.removeAll()
         
         try? FileManager.default.removeItem(at: eventsDirectory)
@@ -153,13 +190,14 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
     
     public func delete(id: String) {
         events.removeAll { $0.id == id }
+        rebuildIndexMap()
         
         let eventURL = eventsDirectory.appendingPathComponent("\(id).json")
         try? FileManager.default.removeItem(at: eventURL)
         
         bodyStorage.deleteBody(eventId: id)
         
-        updateIndex()
+        scheduleIndexUpdate()
         notifySubscribers()
     }
     
@@ -171,6 +209,7 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
         let idsToDelete = events.filter { $0.sessionId == sessionId }.map { $0.id }
         
         events.removeAll { $0.sessionId == sessionId }
+        rebuildIndexMap()
         
         for id in idsToDelete {
             let eventURL = eventsDirectory.appendingPathComponent("\(id).json")
@@ -178,7 +217,7 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
             bodyStorage.deleteBody(eventId: id)
         }
         
-        updateIndex()
+        scheduleIndexUpdate()
         notifySubscribers()
     }
     
@@ -204,23 +243,45 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
         }
         
         let eventURL = eventsDirectory.appendingPathComponent("\(event.id).json")
-        do {
-            let data = try encoder.encode(eventToSave)
-            try data.write(to: eventURL)
-        } catch {
-            print("TraceaStorage: Failed to encode/save event: \(error)")
+        let encoder = self.encoder
+        Task.detached(priority: .utility) {
+            do {
+                let data = try encoder.encode(eventToSave)
+                try data.write(to: eventURL, options: .atomic)
+            } catch {
+                print("TraceaStorage: Failed to encode/save event: \(error)")
+            }
+        }
+    }
+    
+    private func scheduleIndexUpdate() {
+        guard pendingIndexSaveTask == nil else { return }
+        pendingIndexSaveTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 300_000_000) // 300ms debounce
+            guard let self = self else { return }
+            await self.flushIndex()
+        }
+    }
+    
+    private func flushIndex() {
+        pendingIndexSaveTask = nil
+        index = events.map { EventIndexInfo(id: $0.id, sessionId: $0.sessionId, timestamp: $0.timestamp) }
+        
+        let file = self.indexFile
+        let indexToSave = self.index
+        let encoder = self.encoder
+        Task.detached(priority: .utility) {
+            do {
+                let data = try encoder.encode(indexToSave)
+                try data.write(to: file, options: .atomic)
+            } catch {
+                print("TraceaStorage: Failed to save index: \(error)")
+            }
         }
     }
     
     private func updateIndex() {
-        index = events.map { EventIndexInfo(id: $0.id, sessionId: $0.sessionId, timestamp: $0.timestamp) }
-        
-        do {
-            let data = try encoder.encode(index)
-            try data.write(to: indexFile)
-        } catch {
-            print("TraceaStorage: Failed to save index: \(error)")
-        }
+        flushIndex()
     }
     
     private func enforceRetention() {
@@ -248,6 +309,7 @@ public final actor PersistentNetworkEventStore: NetworkEventStore {
             }
             
             if !sessionsToDelete.isEmpty {
+                rebuildIndexMap()
                 updateIndex()
             }
         }

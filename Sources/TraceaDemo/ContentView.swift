@@ -123,6 +123,11 @@ struct ContentView: View {
                     DemoButton(title: "Mockable Endpoint", color: .green) {
                         runScenario { await api.mockableRequest() }
                     }
+                    
+                    DemoButton(title: "⚡ Stress Test (150 Burst Calls)", color: .purple) {
+                        api.runStressTestCalls(count: 150)
+                        statusText = "Generated 150 burst calls! Check Tracea UI."
+                    }
                 }
                 .padding()
             }

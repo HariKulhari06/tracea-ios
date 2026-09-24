@@ -1,20 +1,112 @@
 import SwiftUI
 import TraceaCore
 
+public struct SessionGroup: Identifiable, Sendable {
+    public var id: String { sessionId }
+    public let sessionId: String
+    public let sessionName: String
+    public let events: [NetworkEvent]
+    
+    public init(sessionId: String, sessionName: String, events: [NetworkEvent]) {
+        self.sessionId = sessionId
+        self.sessionName = sessionName
+        self.events = events
+    }
+}
+
 @MainActor
 final class NetworkListViewModel: ObservableObject {
     @Published var events: [NetworkEvent] = []
-    @Published var searchQuery = ""
-    @Published var activeFilter: StatusFilter = .all
-    @Published var activeMethodFilter: MethodFilter = .all
+    @Published var searchQuery = "" {
+        didSet { scheduleFilterUpdate(debounceMs: 150) }
+    }
+    @Published var activeFilter: StatusFilter = .all {
+        didSet { scheduleFilterUpdate(debounceMs: 0) }
+    }
+    @Published var activeMethodFilter: MethodFilter = .all {
+        didSet { scheduleFilterUpdate(debounceMs: 0) }
+    }
     @Published var totalCount = 0
     
-    var filteredEvents: [NetworkEvent] {
-        events.filter { event in
-            let matchesSearch = searchQuery.isEmpty || event.url.localizedCaseInsensitiveContains(searchQuery)
+    @Published var filteredEvents: [NetworkEvent] = []
+    @Published var groupedBySession: [SessionGroup] = []
+    
+    private var streamTask: Task<Void, Never>?
+    private var filterTask: Task<Void, Never>?
+    private var bufferTask: Task<Void, Never>?
+    
+    init() {
+        startListening()
+    }
+    
+    deinit {
+        streamTask?.cancel()
+        filterTask?.cancel()
+        bufferTask?.cancel()
+    }
+    
+    private var latestPendingEvents: [NetworkEvent] = []
+    
+    private func startListening() {
+        streamTask?.cancel()
+        streamTask = Task { [weak self] in
+            guard let store = TraceaServiceLocator.shared.store else { return }
+            
+            for await eventsList in store.getAll() {
+                guard !Task.isCancelled else { break }
+                await MainActor.run { [weak self] in
+                    self?.handleNewEvents(eventsList)
+                }
+            }
+        }
+    }
+    
+    private func handleNewEvents(_ eventsList: [NetworkEvent]) {
+        latestPendingEvents = eventsList
+        if bufferTask == nil {
+            bufferTask = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 60_000_000) // 60ms coalesce
+                guard let self = self, !Task.isCancelled else { return }
+                let listToApply = self.latestPendingEvents
+                self.events = listToApply
+                self.totalCount = listToApply.count
+                self.recalculateFiltered(events: listToApply)
+                self.bufferTask = nil
+            }
+        }
+    }
+    
+    private func scheduleFilterUpdate(debounceMs: UInt64) {
+        filterTask?.cancel()
+        if debounceMs == 0 {
+            recalculateFiltered(events: self.events)
+        } else {
+            filterTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: debounceMs * 1_000_000)
+                guard let self = self, !Task.isCancelled else { return }
+                self.recalculateFiltered(events: self.events)
+            }
+        }
+    }
+    
+    private func recalculateFiltered(events: [NetworkEvent]) {
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let statusFilter = activeFilter
+        let methodFilter = activeMethodFilter
+        
+        let filtered = events.filter { event in
+            let matchesSearch: Bool
+            if query.isEmpty {
+                matchesSearch = true
+            } else {
+                matchesSearch = event.url.lowercased().contains(query) ||
+                                event.path.lowercased().contains(query) ||
+                                event.host.lowercased().contains(query)
+            }
+            
             let matchesFilter: Bool
             let code = event.statusCode ?? 0
-            switch activeFilter {
+            switch statusFilter {
             case .all:
                 matchesFilter = true
             case .success2xx:
@@ -28,8 +120,9 @@ final class NetworkListViewModel: ObservableObject {
             case .errors:
                 matchesFilter = (400...599).contains(code) || event.error != nil
             }
+            
             let matchesMethod: Bool
-            switch activeMethodFilter {
+            switch methodFilter {
             case .all:
                 matchesMethod = true
             case .get:
@@ -41,32 +134,27 @@ final class NetworkListViewModel: ObservableObject {
             case .delete:
                 matchesMethod = event.method == .delete
             }
+            
             return matchesSearch && matchesFilter && matchesMethod
         }
-    }
-    
-    var groupedBySession: [(sessionId: String, sessionName: String, events: [NetworkEvent])] {
-        let grouped = Dictionary(grouping: filteredEvents, by: { $0.sessionId })
-        return grouped.map { (key, value) in
+        
+        self.filteredEvents = filtered
+        
+        // Group by session
+        let grouped = Dictionary(grouping: filtered, by: { $0.sessionId })
+        self.groupedBySession = grouped.map { (key, value) in
             let name = value.first?.sessionName ?? "Session \(key.prefix(8))"
-            return (sessionId: key, sessionName: name, events: value)
+            return SessionGroup(sessionId: key, sessionName: name, events: value)
         }.sorted { $0.sessionName > $1.sessionName }
-    }
-    
-    init() {
-        Task {
-            if let store = TraceaServiceLocator.shared.store {
-                for await eventsList in store.getAll() {
-                    self.events = eventsList
-                    self.totalCount = eventsList.count
-                }
-            }
-        }
     }
     
     func clearAll() async {
         if let store = TraceaServiceLocator.shared.store {
             await store.clear()
+            self.events = []
+            self.totalCount = 0
+            self.filteredEvents = []
+            self.groupedBySession = []
         }
     }
     
@@ -77,8 +165,6 @@ final class NetworkListViewModel: ObservableObject {
     }
     
     func exportSessionHar(sessionId: String) -> String {
-        // Use the full (unfiltered) events list — not filteredEvents — to ensure
-        // complete session export regardless of any active search or status filters.
         let sessionEvents = events.filter { $0.sessionId == sessionId }
         return HarExporter.exportToHarString(events: sessionEvents)
     }

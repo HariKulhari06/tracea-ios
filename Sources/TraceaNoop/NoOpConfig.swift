@@ -7,10 +7,37 @@ public struct TraceaNoopConfig {
     public let bodyCaptureConfig: NoOpBodyCaptureConfig
     public let storageConfig: NoOpStorageConfig
     public let redactionConfig: NoOpRedactionConfig
+    public let domainFilterConfig: NoOpDomainFilterConfig
     public let showFloatingButton: Bool
+    
+    public var allowedDomains: [String] {
+        return domainFilterConfig.allowedDomains
+    }
+    
+    public var ignoredDomains: [String] {
+        return domainFilterConfig.ignoredDomains
+    }
     
     public init(
         enabled: Bool = false,
+        bodyCaptureConfig: NoOpBodyCaptureConfig = NoOpBodyCaptureConfig(),
+        storageConfig: NoOpStorageConfig = NoOpStorageConfig(),
+        redactionConfig: NoOpRedactionConfig = NoOpRedactionConfig(),
+        domainFilterConfig: NoOpDomainFilterConfig = NoOpDomainFilterConfig(),
+        showFloatingButton: Bool = false
+    ) {
+        self.enabled = enabled
+        self.bodyCaptureConfig = bodyCaptureConfig
+        self.storageConfig = storageConfig
+        self.redactionConfig = redactionConfig
+        self.domainFilterConfig = domainFilterConfig
+        self.showFloatingButton = showFloatingButton
+    }
+    
+    public init(
+        enabled: Bool = false,
+        allowedDomains: [String] = [],
+        ignoredDomains: [String] = [],
         bodyCaptureConfig: NoOpBodyCaptureConfig = NoOpBodyCaptureConfig(),
         storageConfig: NoOpStorageConfig = NoOpStorageConfig(),
         redactionConfig: NoOpRedactionConfig = NoOpRedactionConfig(),
@@ -20,7 +47,18 @@ public struct TraceaNoopConfig {
         self.bodyCaptureConfig = bodyCaptureConfig
         self.storageConfig = storageConfig
         self.redactionConfig = redactionConfig
+        self.domainFilterConfig = NoOpDomainFilterConfig(allowedDomains: allowedDomains, ignoredDomains: ignoredDomains)
         self.showFloatingButton = showFloatingButton
+    }
+}
+
+public struct NoOpDomainFilterConfig {
+    public let allowedDomains: [String]
+    public let ignoredDomains: [String]
+    
+    public init(allowedDomains: [String] = [], ignoredDomains: [String] = []) {
+        self.allowedDomains = allowedDomains
+        self.ignoredDomains = ignoredDomains
     }
 }
 

@@ -19,27 +19,59 @@ struct SettingsScreen: View {
                     Toggle("Capture Requests", isOn: $viewModel.captureRequests)
                 }
                 
-                Section(header: Text("Privacy (Redaction)")) {
+                Section(header: Text("Privacy & Redaction")) {
                     Toggle("Show Redacted Placeholder", isOn: $viewModel.showRedactedPlaceholder)
                     NavigationLink("Redacted Headers & Keys") {
-                        Text("Redaction settings placeholder")
-                            .navigationTitle("Redacted Keys")
+                        RedactionSettingsView()
                     }
                 }
                 
-                Section(header: Text("Advanced")) {
+                Section(header: Text("Domain Filtering"), footer: Text(viewModel.domainFilterSummary)) {
+                    NavigationLink {
+                        DomainFilterSettingsView(viewModel: viewModel)
+                    } label: {
+                        HStack {
+                            Text("Allowed & Ignored Domains")
+                            Spacer()
+                            if !viewModel.allowedDomains.isEmpty {
+                                Text("\(viewModel.allowedDomains.count) allowed")
+                                    .font(.caption)
+                                    .foregroundColor(DebuggerColors.primary)
+                            } else if !viewModel.ignoredDomains.isEmpty {
+                                Text("\(viewModel.ignoredDomains.count) ignored")
+                                    .font(.caption)
+                                    .foregroundColor(Color(hex: 0xCE9178))
+                            } else {
+                                Text("All traffic")
+                                    .font(.caption)
+                                    .foregroundColor(DebuggerColors.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+                
+                Section(header: Text("Data Management")) {
                     Button(role: .destructive) {
                         showingClearAlert = true
                     } label: {
-                        Text("Clear All Data")
+                        HStack {
+                            Image(systemName: "trash")
+                            Text("Clear All Recorded Data")
+                        }
+                        .foregroundColor(DebuggerColors.statusError)
                     }
                 }
                 
-                Section(header: Text("About")) {
+                Section(header: Text("About Tracea")) {
                     HStack {
-                        Text("Version")
+                        Text("SDK Version")
                         Spacer()
-                        Text("1.1.1").foregroundColor(.secondary)
+                        Text("1.2.0").foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Platform")
+                        Spacer()
+                        Text("iOS 16+").foregroundColor(.secondary)
                     }
                     Link("GitHub Repository", destination: URL(string: "https://github.com/HariKulhari06/tracea-ios")!)
                 }
@@ -62,5 +94,46 @@ struct SettingsScreen: View {
                 await viewModel.loadStats()
             }
         }
+    }
+}
+
+fileprivate struct RedactionSettingsView: View {
+    private let headers = ["Authorization", "Cookie", "Set-Cookie", "Proxy-Authorization", "X-API-Key"]
+    private let fields = ["password", "token", "access_token", "refresh_token", "secret", "client_secret", "api_key"]
+    
+    var body: some View {
+        ZStack {
+            DebuggerColors.background.ignoresSafeArea()
+            
+            List {
+                Section(header: Text("Protected Headers"), footer: Text("Values for these HTTP headers are automatically redacted.")) {
+                    ForEach(headers, id: \.self) { header in
+                        HStack {
+                            Image(systemName: "lock.shield.fill")
+                                .foregroundColor(Color(hex: 0x4EC9B0))
+                            Text(header)
+                                .font(.system(.subheadline, design: .monospaced))
+                                .foregroundColor(DebuggerColors.onBackground)
+                        }
+                        .listRowBackground(DebuggerColors.surface)
+                    }
+                }
+                
+                Section(header: Text("Protected JSON Keys"), footer: Text("Values for these keys in request/response bodies are replaced with [REDACTED].")) {
+                    ForEach(fields, id: \.self) { field in
+                        HStack {
+                            Image(systemName: "key.fill")
+                                .foregroundColor(DebuggerColors.primary)
+                            Text(field)
+                                .font(.system(.subheadline, design: .monospaced))
+                                .foregroundColor(DebuggerColors.onBackground)
+                        }
+                        .listRowBackground(DebuggerColors.surface)
+                    }
+                }
+            }
+            .scrollContentBackground(.hidden)
+        }
+        .navigationTitle("Redacted Keys")
     }
 }

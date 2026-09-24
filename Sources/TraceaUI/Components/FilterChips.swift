@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Status filter options for the network list.
-public enum StatusFilter: String, CaseIterable {
+public enum StatusFilter: String, CaseIterable, Sendable {
     case all = "All"
     case success2xx = "2xx"
     case redirect3xx = "3xx"
@@ -10,7 +10,7 @@ public enum StatusFilter: String, CaseIterable {
     case errors = "Errors"
 }
 
-/// A horizontally scrollable list of filter chips.
+/// A horizontally scrollable list of status filter chips.
 public struct FilterChips: View {
     public let activeFilter: StatusFilter
     public let onFilterSelected: (StatusFilter) -> Void
@@ -22,32 +22,38 @@ public struct FilterChips: View {
     
     public var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(StatusFilter.allCases, id: \.self) { filter in
                     let isSelected = activeFilter == filter
                     
-                    Button(action: {
-                        onFilterSelected(filter)
-                    }) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            onFilterSelected(filter)
+                        }
+                    } label: {
                         Text(filter.rawValue)
-                            .font(.subheadline)
-                            .fontWeight(isSelected ? .bold : .regular)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .font(.system(.caption, design: .rounded).weight(isSelected ? .bold : .medium))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
                             .background(isSelected ? DebuggerColors.primary : DebuggerColors.surface)
                             .foregroundColor(isSelected ? DebuggerColors.background : DebuggerColors.onSurface)
-                            .cornerRadius(16)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(isSelected ? Color.clear : DebuggerColors.surfaceVariant, lineWidth: 1)
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
         }
     }
 }
 
 /// HTTP method filter options for the network list.
-public enum MethodFilter: String, CaseIterable {
-    case all = "All"
+public enum MethodFilter: String, CaseIterable, Sendable {
+    case all = "All Methods"
     case get = "GET"
     case post = "POST"
     case put = "PUT"
@@ -66,25 +72,31 @@ public struct MethodFilterChips: View {
     
     public var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 ForEach(MethodFilter.allCases, id: \.self) { filter in
                     let isSelected = activeFilter == filter
                     
-                    Button(action: {
-                        onFilterSelected(filter)
-                    }) {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            onFilterSelected(filter)
+                        }
+                    } label: {
                         Text(filter.rawValue)
-                            .font(.subheadline)
-                            .fontWeight(isSelected ? .bold : .regular)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .font(.system(size: 11, weight: isSelected ? .bold : .medium, design: .monospaced))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
                             .background(isSelected ? DebuggerColors.primary : DebuggerColors.surface)
-                            .foregroundColor(isSelected ? DebuggerColors.background : DebuggerColors.onSurface)
-                            .cornerRadius(16)
+                            .foregroundColor(isSelected ? DebuggerColors.background : DebuggerColors.onSurfaceVariant)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(isSelected ? Color.clear : DebuggerColors.surfaceVariant.opacity(0.8), lineWidth: 1)
+                            )
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
         }
     }
 }

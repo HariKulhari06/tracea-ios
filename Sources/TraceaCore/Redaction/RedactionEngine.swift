@@ -64,14 +64,14 @@ public final class RedactionEngine: Sendable {
         redactedEvent.requestHeaders = redactHeaders(event.requestHeaders)
         redactedEvent.responseHeaders = redactHeaders(event.responseHeaders)
         
-        if let reqBody = event.requestBody, case let .text(content, type, size) = reqBody, type == .json {
+        if let reqBody = event.requestBody, case let .text(content, type, _) = reqBody, type == .json {
             let redactedContent = redactJsonBody(content)
             let newSize = Int64(redactedContent.utf8.count)
             redactedEvent.requestBody = .text(content: redactedContent, contentType: type, size: newSize)
             redactedEvent.requestSize = newSize
         }
         
-        if let resBody = event.responseBody, case let .text(content, type, size) = resBody, type == .json {
+        if let resBody = event.responseBody, case let .text(content, type, _) = resBody, type == .json {
             let redactedContent = redactJsonBody(content)
             let newSize = Int64(redactedContent.utf8.count)
             redactedEvent.responseBody = .text(content: redactedContent, contentType: type, size: newSize)

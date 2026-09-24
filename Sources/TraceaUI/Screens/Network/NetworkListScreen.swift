@@ -11,27 +11,47 @@ struct NetworkListScreen: View {
             DebuggerColors.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                FilterChips(activeFilter: viewModel.activeFilter) { selected in
-                    viewModel.activeFilter = selected
+                // Search Bar & Filter Controls
+                VStack(spacing: 8) {
+                    SearchBar(text: $viewModel.searchQuery, prompt: "Search URLs, paths, hosts...")
+                        .padding(.horizontal, 16)
+                    
+                    FilterChips(activeFilter: viewModel.activeFilter) { selected in
+                        viewModel.activeFilter = selected
+                    }
+                    
+                    MethodFilterChips(activeFilter: viewModel.activeMethodFilter) { selected in
+                        viewModel.activeMethodFilter = selected
+                    }
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .background(DebuggerColors.background)
                 
-//                MethodFilterChips(activeFilter: viewModel.activeMethodFilter) { selected in
-//                    viewModel.activeMethodFilter = selected
-//                }
-//                .padding(.horizontal)
-//                .padding(.vertical, 4)
+                Divider().background(DebuggerColors.divider)
                 
                 if viewModel.filteredEvents.isEmpty {
                     Spacer()
-                    EmptyState(icon: "network", title: "No Events", message: "No network events recorded yet.")
+                    if viewModel.events.isEmpty {
+                        EmptyState(
+                            icon: "network",
+                            title: "No Events",
+                            message: "Network requests captured by Tracea will appear here automatically."
+                        )
+                    } else {
+                        EmptyState(
+                            icon: "line.3.horizontal.decrease.circle",
+                            title: "No Matching Requests",
+                            message: "No requests match the selected filters or search query."
+                        )
+                    }
                     Spacer()
                 } else {
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 12) {
-                            ForEach(viewModel.groupedBySession, id: \.sessionId) { group in
+                        LazyVStack(alignment: .leading, spacing: 14) {
+                            ForEach(viewModel.groupedBySession) { group in
                                 let isExpanded = !collapsedSessions.contains(group.sessionId)
+                                
                                 VStack(alignment: .leading, spacing: 0) {
                                     SessionHeader(
                                         sessionName: group.sessionName,
@@ -58,29 +78,39 @@ struct NetworkListScreen: View {
                                     )
                                     
                                     if isExpanded {
-                                        ForEach(group.events, id: \.id) { event in
-                                            NavigationLink(value: event.id) {
-                                                RequestRow(event: event)
+                                        LazyVStack(alignment: .leading, spacing: 0) {
+                                            ForEach(group.events) { event in
+                                                NavigationLink(value: event.id) {
+                                                    RequestRow(event: event)
+                                                }
+                                                .buttonStyle(.plain)
+                                                
+                                                Divider().background(DebuggerColors.divider.opacity(0.6))
                                             }
-                                            Divider().background(DebuggerColors.divider)
                                         }
                                     }
                                 }
-                                .cornerRadius(8)
-                                .padding(.horizontal)
+                                .background(DebuggerColors.surface)
+                                .cornerRadius(10)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .stroke(DebuggerColors.divider, lineWidth: 1)
+                                )
+                                .padding(.horizontal, 16)
                             }
                         }
+                        .padding(.vertical, 12)
                     }
                 }
             }
         }
-        .searchable(text: $viewModel.searchQuery, prompt: "Search URLs...")
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 Button(role: .destructive) {
                     showingClearAlert = true
                 } label: {
                     Image(systemName: "trash")
+                        .foregroundColor(DebuggerColors.statusError)
                 }
             }
         }

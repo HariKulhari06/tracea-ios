@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A collapsible header for a network session.
+/// A collapsible header for a network session with action buttons.
 public struct SessionHeader: View {
     public let sessionName: String
     public let requestCount: Int
@@ -28,44 +28,50 @@ public struct SessionHeader: View {
     }
     
     public var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Button(action: onToggle) {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "chevron.right")
+                        .font(.system(size: 11, weight: .bold))
                         .rotationEffect(.degrees(isExpanded ? 90 : 0))
                         .foregroundColor(DebuggerColors.onSurfaceVariant)
-                        .animation(.easeInOut(duration: 0.2), value: isExpanded)
                     
                     Text(sessionName)
-                        .font(.headline)
+                        .font(.system(.subheadline, design: .rounded).weight(.bold))
                         .foregroundColor(DebuggerColors.onBackground)
+                        .lineLimit(1)
                     
                     Text("\(requestCount)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(DebuggerColors.surfaceVariant)
                         .foregroundColor(DebuggerColors.onSurface)
                         .clipShape(Capsule())
                     
-                    Spacer()
+                    Spacer(minLength: 4)
                 }
                 .contentShape(Rectangle())
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
             
             Button(action: onShare) {
                 Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(DebuggerColors.primary)
-                    .padding(8)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             
             Button(action: { showingDeleteAlert = true }) {
                 Image(systemName: "trash")
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundColor(DebuggerColors.statusError)
-                    .padding(8)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .alert(isPresented: $showingDeleteAlert) {
                 Alert(
                     title: Text("Delete Session"),
@@ -75,7 +81,8 @@ public struct SessionHeader: View {
                 )
             }
         }
-        .padding()
-        .background(DebuggerColors.surface)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(DebuggerColors.surfaceVariant.opacity(0.4))
     }
 }
