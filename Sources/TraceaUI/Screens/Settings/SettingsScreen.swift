@@ -66,7 +66,7 @@ struct SettingsScreen: View {
                     HStack {
                         Text("SDK Version")
                         Spacer()
-                        Text("1.2.0").foregroundColor(.secondary)
+                        Text("1.3.0").foregroundColor(.secondary)
                     }
                     HStack {
                         Text("Platform")

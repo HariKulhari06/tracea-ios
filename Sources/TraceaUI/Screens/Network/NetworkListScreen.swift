@@ -2,8 +2,10 @@ import SwiftUI
 import TraceaCore
 
 struct NetworkListScreen: View {
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = NetworkListViewModel()
     @State private var showingClearAlert = false
+    @State private var showingSettings = false
     @State private var collapsedSessions: Set<String> = []
     
     var body: some View {
@@ -16,15 +18,13 @@ struct NetworkListScreen: View {
                     SearchBar(text: $viewModel.searchQuery, prompt: "Search URLs, paths, hosts...")
                         .padding(.horizontal, 16)
                     
-                    FilterChips(activeFilter: viewModel.activeFilter) { selected in
-                        viewModel.activeFilter = selected
-                    }
-                    
-                    MethodFilterChips(activeFilter: viewModel.activeMethodFilter) { selected in
-                        viewModel.activeMethodFilter = selected
-                    }
+                    NetworkFilterBar(
+                        activeStatusFilter: $viewModel.activeFilter,
+                        activeMethodFilter: $viewModel.activeMethodFilter
+                    )
+                    .padding(.horizontal, 16)
                 }
-                .padding(.top, 8)
+                .padding(.top, 6)
                 .padding(.bottom, 8)
                 .background(DebuggerColors.background)
                 
@@ -104,13 +104,42 @@ struct NetworkListScreen: View {
                 }
             }
         }
+        .navigationTitle("Network")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
         .toolbar {
-            ToolbarItem(placement: .automatic) {
+            ToolbarItem(placement: .cancellationAction) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(DebuggerColors.onSurfaceVariant)
+                }
+            }
+            
+            ToolbarItem(placement: .principal) {
+                Text("Network")
+                    .font(.system(.headline, design: .rounded).weight(.bold))
+                    .foregroundColor(DebuggerColors.onBackground)
+            }
+            
+            ToolbarItemGroup(placement: .primaryAction) {
                 Button(role: .destructive) {
                     showingClearAlert = true
                 } label: {
                     Image(systemName: "trash")
+                        .font(.system(size: 15))
                         .foregroundColor(DebuggerColors.statusError)
+                }
+                
+                Button {
+                    showingSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 16))
+                        .foregroundColor(DebuggerColors.onSurfaceVariant)
                 }
             }
         }
@@ -124,9 +153,11 @@ struct NetworkListScreen: View {
         } message: {
             Text("Are you sure you want to clear all network events?")
         }
-        .navigationTitle("Network")
         .navigationDestination(for: String.self) { eventId in
             RequestDetailScreen(eventId: eventId)
+        }
+        .navigationDestination(isPresented: $showingSettings) {
+            SettingsScreen()
         }
     }
 }

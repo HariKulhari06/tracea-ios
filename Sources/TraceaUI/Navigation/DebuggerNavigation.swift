@@ -14,7 +14,6 @@ public enum DebuggerTab: String, CaseIterable {
     case network = "Network"
     case timeline = "Timeline"
     case mocks = "Mocks"
-    case settings = "Settings"
 }
 
 /// The root view for the Tracea Debugger.
@@ -29,11 +28,6 @@ public struct TraceaRootView: View {
             // 1. Network List Tab
             NavigationStack {
                 NetworkListScreen()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            closeButton
-                        }
-                    }
             }
             .tabItem {
                 Label("Network", systemImage: "list.bullet")
@@ -67,20 +61,6 @@ public struct TraceaRootView: View {
                 Label("Mocks", systemImage: "slider.horizontal.3")
             }
             .tag(DebuggerTab.mocks)
-            
-            // 4. Settings Tab
-            NavigationStack {
-                SettingsScreen()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            closeButton
-                        }
-                    }
-            }
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
-            }
-            .tag(DebuggerTab.settings)
         }
         .debuggerTheme()
         .preferredColorScheme(.dark)

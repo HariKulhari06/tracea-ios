@@ -109,7 +109,7 @@ final class NetworkListViewModel: ObservableObject {
             switch statusFilter {
             case .all:
                 matchesFilter = true
-            case .success2xx:
+            case .success, .success2xx:
                 matchesFilter = (200...299).contains(code)
             case .redirect3xx:
                 matchesFilter = (300...399).contains(code)
@@ -131,6 +131,8 @@ final class NetworkListViewModel: ObservableObject {
                 matchesMethod = event.method == .post
             case .put:
                 matchesMethod = event.method == .put
+            case .patch:
+                matchesMethod = event.method == .patch
             case .delete:
                 matchesMethod = event.method == .delete
             }
