@@ -100,10 +100,11 @@ public struct CodeBlock: View {
                     Text(textToDisplay.isEmpty ? "(empty)" : textToDisplay)
                         .font(.system(.subheadline, design: .monospaced))
                         .foregroundColor(textToDisplay.isEmpty ? DebuggerColors.onSurfaceVariant : DebuggerColors.onBackground)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: true, vertical: false)
                         .padding(12)
                         .textSelection(.enabled)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .background(DebuggerColors.surface)
