@@ -10,8 +10,23 @@ public struct CodeBlock: View {
     public let title: String?
     public var showCopyButton: Bool
     
+    /// Maximum characters rendered in the SwiftUI Text view to prevent Main thread layout hangs.
+    public static let maxDisplayLength = 20_000
+    
     @State private var isCopied = false
-    @State private var wrapLines = true
+    @State private var wrapLines = false
+    
+    private var isTruncated: Bool {
+        content.count > Self.maxDisplayLength
+    }
+    
+    private var displayContent: String {
+        if isTruncated {
+            let prefix = content.prefix(Self.maxDisplayLength)
+            return "\(prefix)\n\n... [Truncated for display: showing first \(Self.maxDisplayLength) of \(content.count) characters. Full payload copied on copy] ..."
+        }
+        return content
+    }
     
     public init(content: String, title: String? = nil, showCopyButton: Bool = true) {
         self.content = content
@@ -31,21 +46,19 @@ public struct CodeBlock: View {
                 
                 Spacer()
                 
-                // Wrap / Horizontal toggle
+                // Wrap / Horizontal toggle button
                 Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        wrapLines.toggle()
-                    }
+                    wrapLines.toggle()
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: wrapLines ? "text.word.spacing" : "arrow.left.and.right")
-                        Text(wrapLines ? "Wrap" : "Scroll")
+                        Text(wrapLines ? "Wrap: ON" : "Wrap: OFF")
                     }
-                    .font(.caption2)
-                    .foregroundColor(DebuggerColors.onSurfaceVariant)
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(wrapLines ? DebuggerColors.primary : DebuggerColors.onSurfaceVariant)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
-                    .background(DebuggerColors.surfaceVariant.opacity(0.6))
+                    .background(wrapLines ? DebuggerColors.primary.opacity(0.15) : DebuggerColors.surfaceVariant.opacity(0.6))
                     .cornerRadius(4)
                 }
                 .buttonStyle(.plain)
@@ -73,22 +86,23 @@ public struct CodeBlock: View {
             Divider().background(DebuggerColors.divider)
             
             // Monospace content area
-            Group {
-                if wrapLines {
-                    Text(content.isEmpty ? "(empty)" : content)
+            let textToDisplay = displayContent
+            if wrapLines {
+                Text(textToDisplay.isEmpty ? "(empty)" : textToDisplay)
+                    .font(.system(.subheadline, design: .monospaced))
+                    .foregroundColor(textToDisplay.isEmpty ? DebuggerColors.onSurfaceVariant : DebuggerColors.onBackground)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .textSelection(.enabled)
+            } else {
+                ScrollView(.horizontal, showsIndicators: true) {
+                    Text(textToDisplay.isEmpty ? "(empty)" : textToDisplay)
                         .font(.system(.subheadline, design: .monospaced))
-                        .foregroundColor(content.isEmpty ? DebuggerColors.onSurfaceVariant : DebuggerColors.onBackground)
+                        .foregroundColor(textToDisplay.isEmpty ? DebuggerColors.onSurfaceVariant : DebuggerColors.onBackground)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .textSelection(.enabled)
-                } else {
-                    ScrollView(.horizontal, showsIndicators: true) {
-                        Text(content.isEmpty ? "(empty)" : content)
-                            .font(.system(.subheadline, design: .monospaced))
-                            .foregroundColor(content.isEmpty ? DebuggerColors.onSurfaceVariant : DebuggerColors.onBackground)
-                            .padding(12)
-                            .textSelection(.enabled)
-                    }
                 }
             }
         }
