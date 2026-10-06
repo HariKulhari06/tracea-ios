@@ -170,6 +170,52 @@ public final class DemoAPIService {
         }
     }
     
+    public func largeJsonResponse() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/post") else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Build a JSON array with enough entries to exceed 500KB
+        var items: [[String: Any]] = []
+        for i in 0..<2000 {
+            items.append([
+                "id": i,
+                "uuid": UUID().uuidString,
+                "name": "User \(i)",
+                "email": "user\(i)@example.com",
+                "phone": "+1-555-\(String(format: "%04d", i))",
+                "address": [
+                    "street": "\(i * 10) Main Street",
+                    "city": "Springfield",
+                    "state": "IL",
+                    "zip": String(format: "%05d", 60000 + i)
+                ],
+                "company": "Acme Corp Division \(i % 50)",
+                "bio": "This is a sample bio for user \(i). It contains enough text to contribute to the overall payload size of this large JSON response test scenario.",
+                "tags": ["user", "test", "batch-\(i % 10)", "large-payload"],
+                "active": i % 3 != 0,
+                "score": Double(i) * 1.5,
+                "createdAt": "2026-01-\(String(format: "%02d", (i % 28) + 1))T12:00:00Z"
+            ] as [String : Any])
+        }
+        
+        let jsonData = try? JSONSerialization.data(withJSONObject: items, options: [])
+        req.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let requestKB = (jsonData?.count ?? 0) / 1024
+            let responseKB = data.count / 1024
+            return .success("HTTP \(status): Large JSON (\(requestKB)KB sent, \(responseKB)KB received)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
     public func postWithBody() async -> Result<String, Error> {
         guard let url = URL(string: "https://httpbin.org/post") else {
             return .failure(URLError(.badURL))
@@ -263,6 +309,145 @@ public final class DemoAPIService {
         } catch {
             return .failure(error)
         }
+    }
+    
+    /// Scenario: Large JSON Request Body (POST ~600KB request body)
+    public func largeJsonRequestBody() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/status/200") else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var items: [[String: Any]] = []
+        for i in 0..<2000 {
+            items.append([
+                "id": i,
+                "uuid": UUID().uuidString,
+                "title": "Uploaded Item #\(i)",
+                "description": "Payload testing request body serialization and inspection inside Tracea Request tab.",
+                "tags": ["request-body", "perf", "test-\(i)"],
+                "metadata": [
+                    "timestamp": 1700000000 + i,
+                    "version": "2.4.\(i % 10)",
+                    "active": i % 2 == 0
+                ]
+            ])
+        }
+        let jsonData = try? JSONSerialization.data(withJSONObject: items, options: [])
+        req.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let reqKB = (jsonData?.count ?? 0) / 1024
+            return .success("HTTP \(status): Large Request Body sent (\(reqKB)KB sent, \(data.count) bytes response)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    /// Scenario: Truncated Response Payload (> 2MB limit, e.g. 2.5MB response)
+    public func truncatedLargePayload() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/bytes/2500000") else {
+            return .failure(URLError(.badURL))
+        }
+        do {
+            let (data, response) = try await session.data(from: url)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let mb = String(format: "%.1f", Double(data.count) / 1_048_576.0)
+            return .success("HTTP \(status): Received \(mb)MB (Truncated at 2MB in Tracea)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    /// Scenario: Deeply Nested JSON structure (20+ levels deep)
+    public func deeplyNestedJson() async -> Result<String, Error> {
+        guard let url = URL(string: "https://httpbin.org/post") else {
+            return .failure(URLError(.badURL))
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        var nested: [String: Any] = ["leaf": "deepest_value", "level": 25, "active": true]
+        for depth in stride(from: 24, through: 1, by: -1) {
+            nested = [
+                "level": depth,
+                "node_name": "node_depth_\(depth)",
+                "child": nested,
+                "siblings": [
+                    ["sibling_id": 1, "depth": depth],
+                    ["sibling_id": 2, "depth": depth]
+                ]
+            ]
+        }
+        let jsonData = try? JSONSerialization.data(withJSONObject: nested, options: [])
+        req.httpBody = jsonData
+        
+        do {
+            let (data, response) = try await session.data(for: req)
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            return .success("HTTP \(status): Deeply Nested JSON (25 levels, \(data.count) bytes)")
+        } catch {
+            return .failure(error)
+        }
+    }
+    
+    /// Scenario: Large Non-JSON Text/HTML Response (~500KB)
+    public func largeTextHtmlResponse() async -> Result<String, Error> {
+        // Emits a manual 500KB HTML/text response to benchmark raw non-JSON rendering
+        let call = Tracea.shared.startRequest(method: "GET", url: "https://example.com/docs/large-manual.html")
+        call?.requestHeaders(["Accept": "text/html"])
+        
+        var htmlContent = "<!DOCTYPE html>\n<html><head><title>Large HTML Document</title></head><body>\n<h1>Tracea Large HTML Benchmark</h1>\n"
+        htmlContent.reserveCapacity(550_000)
+        for i in 1...3000 {
+            htmlContent += "<div class=\"section\" id=\"sec-\(i)\"><h3>Section \(i)</h3><p>Paragraph with sample content describing section \(i) to generate a realistic multi-hundred-kilobyte HTML document.</p></div>\n"
+        }
+        htmlContent += "</body></html>"
+        
+        let size = Int64(htmlContent.utf8.count)
+        call?.response(
+            statusCode: 200,
+            headers: ["Content-Type": "text/html; charset=utf-8"],
+            body: htmlContent,
+            contentType: "text/html"
+        )
+        return .success("HTTP 200: Large HTML Document emitted (\(size / 1024)KB)")
+    }
+    
+    /// Scenario: High-Payload Burst (10 concurrent ~200KB transactions)
+    public func rapidLargePayloadBurst(count: Int = 10) async -> Result<String, Error> {
+        await withTaskGroup(of: Void.self) { group in
+            for i in 1...count {
+                group.addTask {
+                    let call = Tracea.shared.startRequest(
+                        method: "POST",
+                        url: "https://api.example.com/v1/heavy-batch/\(i)"
+                    )
+                    call?.requestHeaders(["X-Batch-Item": "\(i)"])
+                    
+                    var bodyObj: [[String: Any]] = []
+                    for j in 0..<500 {
+                        bodyObj.append(["index": j, "uuid": UUID().uuidString, "batch": i, "content": "Sample burst data payload item \(j)"])
+                    }
+                    if let data = try? JSONSerialization.data(withJSONObject: bodyObj, options: []),
+                       let jsonStr = String(data: data, encoding: .utf8) {
+                        call?.requestBody(jsonStr, contentType: "application/json")
+                        call?.response(
+                            statusCode: 200,
+                            headers: ["Content-Type": "application/json"],
+                            body: "{\"status\": \"processed\", \"items\": 500, \"batch\": \(i)}",
+                            contentType: "application/json"
+                        )
+                    }
+                }
+            }
+        }
+        return .success("Generated \(count) concurrent ~200KB transactions!")
     }
     
     /// Emits a high-volume burst of network events (e.g. 150+ calls) to benchmark UI and collector performance

@@ -17,7 +17,11 @@ public enum JsonSyntaxHighlighter {
     private static let boolRegex = try? NSRegularExpression(pattern: "(?<=: )(true|false|null)", options: [])
     
     /// Formats a raw JSON string into pretty-printed JSON.
+    /// Skips formatting for massive payloads (> 100,000 chars) to prevent UI thread freezes.
     public static func prettyPrint(_ json: String) -> String {
+        guard json.count <= 100_000 else {
+            return json
+        }
         guard let data = json.data(using: .utf8),
               let jsonObject = try? JSONSerialization.jsonObject(with: data, options: []),
               let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: [.prettyPrinted, .withoutEscapingSlashes, .sortedKeys]),

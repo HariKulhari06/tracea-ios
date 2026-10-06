@@ -75,25 +75,49 @@ struct ContentView: View {
                         runScenario { await api.largeResponse() }
                     }
                     
-                    DemoButton(title: "9. POST with JSON Body", color: .cyan) {
+                    DemoButton(title: "9. Large JSON Response (500KB+)", color: .mint) {
+                        runScenario { await api.largeJsonResponse() }
+                    }
+                    
+                    DemoButton(title: "10. POST with JSON Body", color: .cyan) {
                         runScenario { await api.postWithBody() }
                     }
                     
-                    DemoButton(title: "10. Manual Capture Test", color: .gray) {
+                    DemoButton(title: "11. Manual Capture Test", color: .gray) {
                         api.manualCaptureCall()
                         statusText = "Manual network event emitted!"
                     }
                     
-                    DemoButton(title: "11. Redacted Headers Test", color: .indigo) {
+                    DemoButton(title: "12. Redacted Headers Test", color: .indigo) {
                         runScenario { await api.redactedHeaders() }
                     }
                     
-                    DemoButton(title: "12. POST Multipart Form-Data (File Upload)", color: .brown) {
+                    DemoButton(title: "13. POST Multipart Form-Data (File Upload)", color: .brown) {
                         runScenario { await api.uploadMultipart() }
                     }
                     
-                    DemoButton(title: "13. GET Image Download (PNG Binary)", color: .teal) {
+                    DemoButton(title: "14. GET Image Download (PNG Binary)", color: .teal) {
                         runScenario { await api.downloadImage() }
+                    }
+                    
+                    DemoButton(title: "15. POST Large Request Body (~600KB)", color: .cyan) {
+                        runScenario { await api.largeJsonRequestBody() }
+                    }
+                    
+                    DemoButton(title: "16. Truncated Payload (>2MB Limit)", color: .red) {
+                        runScenario { await api.truncatedLargePayload() }
+                    }
+                    
+                    DemoButton(title: "17. Deeply Nested JSON (25 Levels)", color: .orange) {
+                        runScenario { await api.deeplyNestedJson() }
+                    }
+                    
+                    DemoButton(title: "18. Large HTML Document (~500KB)", color: .mint) {
+                        runScenario { await api.largeTextHtmlResponse() }
+                    }
+                    
+                    DemoButton(title: "19. ⚡ Rapid Burst (10x ~200KB Concurrent)", color: .purple) {
+                        runScenario { await api.rapidLargePayloadBurst(count: 10) }
                     }
                     
                     Divider().padding(.vertical, 4)
@@ -174,6 +198,9 @@ struct ContentView: View {
             try? await Task.sleep(nanoseconds: 200_000_000)
             
             _ = await api.largeResponse()
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            
+            _ = await api.largeJsonResponse()
             try? await Task.sleep(nanoseconds: 200_000_000)
             
             _ = await api.postWithBody()
