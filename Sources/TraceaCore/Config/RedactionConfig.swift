@@ -10,8 +10,8 @@ public struct RedactionConfig: Sendable {
     public var replacementString: String
     
     public init(
-        sensitiveHeaders: Set<String> = ["Authorization", "Cookie", "Set-Cookie", "Proxy-Authorization", "X-API-Key"],
-        sensitiveJsonFields: Set<String> = ["password", "token", "access_token", "refresh_token", "secret", "client_secret", "api_key"],
+        sensitiveHeaders: Set<String> = [],
+        sensitiveJsonFields: Set<String> = [],
         replacementString: String = "[REDACTED]"
     ) {
         self.sensitiveHeaders = sensitiveHeaders

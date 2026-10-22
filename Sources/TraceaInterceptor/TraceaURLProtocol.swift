@@ -141,6 +141,14 @@ public final class TraceaURLProtocol: URLProtocol, @unchecked Sendable {
         let sessionConfig = URLSessionConfiguration.ephemeral
         sessionConfig.protocolClasses = [] // Important: don't include self to avoid recursion
         
+        // Share the app's cookie, credential and cache storage so Tracea
+        // does not alter the parent app's networking behaviour.
+        sessionConfig.httpCookieStorage = HTTPCookieStorage.shared
+        sessionConfig.httpCookieAcceptPolicy = .always
+        sessionConfig.httpShouldSetCookies = true
+        sessionConfig.urlCredentialStorage = URLCredentialStorage.shared
+        sessionConfig.urlCache = URLCache.shared
+        
         let session = URLSession(configuration: sessionConfig, delegate: self, delegateQueue: nil)
         
         self.dataTask = session.dataTask(with: mutableRequest as URLRequest)
@@ -356,7 +364,7 @@ public final class TraceaURLProtocol: URLProtocol, @unchecked Sendable {
 
 extension TraceaURLProtocol: URLSessionDataDelegate {
     public func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .allowed)
         completionHandler(.allow)
     }
     

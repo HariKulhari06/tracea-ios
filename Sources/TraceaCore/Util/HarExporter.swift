@@ -105,7 +105,7 @@ public enum HarExporter {
             "version": "1.2",
             "creator": [
                 "name": "Tracea iOS",
-                "version": "1.4.1"
+                "version": "1.5.0"
             ],
             "entries": entries
         ]
