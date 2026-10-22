@@ -66,7 +66,7 @@ struct SettingsScreen: View {
                     HStack {
                         Text("SDK Version")
                         Spacer()
-                        Text("1.4.1").foregroundColor(.secondary)
+                        Text("1.5.0").foregroundColor(.secondary)
                     }
                     HStack {
                         Text("Platform")
@@ -98,37 +98,61 @@ struct SettingsScreen: View {
 }
 
 fileprivate struct RedactionSettingsView: View {
-    private let headers = ["Authorization", "Cookie", "Set-Cookie", "Proxy-Authorization", "X-API-Key"]
-    private let fields = ["password", "token", "access_token", "refresh_token", "secret", "client_secret", "api_key"]
+    private var headers: [String] {
+        Array(TraceaServiceLocator.shared.config.redactionConfig.sensitiveHeaders).sorted()
+    }
+    private var fields: [String] {
+        Array(TraceaServiceLocator.shared.config.redactionConfig.sensitiveJsonFields).sorted()
+    }
     
     var body: some View {
         ZStack {
             DebuggerColors.background.ignoresSafeArea()
             
             List {
-                Section(header: Text("Protected Headers"), footer: Text("Values for these HTTP headers are automatically redacted.")) {
-                    ForEach(headers, id: \.self) { header in
-                        HStack {
-                            Image(systemName: "lock.shield.fill")
-                                .foregroundColor(Color(hex: 0x4EC9B0))
-                            Text(header)
-                                .font(.system(.subheadline, design: .monospaced))
-                                .foregroundColor(DebuggerColors.onBackground)
+                Section(
+                    header: Text("Protected Headers"),
+                    footer: Text(headers.isEmpty ? "No headers configured for redaction." : "Values for these HTTP headers are automatically redacted.")
+                ) {
+                    if headers.isEmpty {
+                        Text("None configured (default)")
+                            .font(.subheadline)
+                            .foregroundColor(DebuggerColors.onSurfaceVariant)
+                            .listRowBackground(DebuggerColors.surface)
+                    } else {
+                        ForEach(headers, id: \.self) { header in
+                            HStack {
+                                Image(systemName: "lock.shield.fill")
+                                    .foregroundColor(Color(hex: 0x4EC9B0))
+                                Text(header)
+                                    .font(.system(.subheadline, design: .monospaced))
+                                    .foregroundColor(DebuggerColors.onBackground)
+                            }
+                            .listRowBackground(DebuggerColors.surface)
                         }
-                        .listRowBackground(DebuggerColors.surface)
                     }
                 }
                 
-                Section(header: Text("Protected JSON Keys"), footer: Text("Values for these keys in request/response bodies are replaced with [REDACTED].")) {
-                    ForEach(fields, id: \.self) { field in
-                        HStack {
-                            Image(systemName: "key.fill")
-                                .foregroundColor(DebuggerColors.primary)
-                            Text(field)
-                                .font(.system(.subheadline, design: .monospaced))
-                                .foregroundColor(DebuggerColors.onBackground)
+                Section(
+                    header: Text("Protected JSON Keys"),
+                    footer: Text(fields.isEmpty ? "No JSON keys configured for redaction." : "Values for these keys in request/response bodies are replaced with [REDACTED].")
+                ) {
+                    if fields.isEmpty {
+                        Text("None configured (default)")
+                            .font(.subheadline)
+                            .foregroundColor(DebuggerColors.onSurfaceVariant)
+                            .listRowBackground(DebuggerColors.surface)
+                    } else {
+                        ForEach(fields, id: \.self) { field in
+                            HStack {
+                                Image(systemName: "key.fill")
+                                    .foregroundColor(DebuggerColors.primary)
+                                Text(field)
+                                    .font(.system(.subheadline, design: .monospaced))
+                                    .foregroundColor(DebuggerColors.onBackground)
+                            }
+                            .listRowBackground(DebuggerColors.surface)
                         }
-                        .listRowBackground(DebuggerColors.surface)
                     }
                 }
             }

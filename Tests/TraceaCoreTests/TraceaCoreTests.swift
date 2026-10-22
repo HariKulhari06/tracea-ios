@@ -72,4 +72,54 @@ final class TraceaCoreTests: XCTestCase {
         XCTAssertTrue(config.shouldCapture(url: URL(string: "http://localhost:8080/debug")))
         XCTAssertFalse(config.shouldCapture(url: URL(string: "https://reports.crashlytics.com/upload")))
     }
+    
+    func testRedactionConfigDefaultIsEmpty() {
+        let config = RedactionConfig()
+        XCTAssertTrue(config.sensitiveHeaders.isEmpty, "sensitiveHeaders must be empty by default")
+        XCTAssertTrue(config.sensitiveJsonFields.isEmpty, "sensitiveJsonFields must be empty by default")
+        XCTAssertEqual(config.replacementString, "[REDACTED]")
+    }
+    
+    func testRedactionEngineWithDefaultsDoesNotRedact() {
+        let config = RedactionConfig()
+        let engine = RedactionEngine(config: config)
+        
+        // Headers that were previously redacted should NOT be redacted now
+        let headers: [String: [String]] = [
+            "Authorization": ["Bearer secret123"],
+            "Cookie": ["session=abc"],
+            "Set-Cookie": ["token=xyz"]
+        ]
+        let redactedHeaders = engine.redactHeaders(headers)
+        XCTAssertEqual(redactedHeaders["Authorization"], ["Bearer secret123"])
+        XCTAssertEqual(redactedHeaders["Cookie"], ["session=abc"])
+        XCTAssertEqual(redactedHeaders["Set-Cookie"], ["token=xyz"])
+        
+        // JSON fields that were previously redacted should NOT be redacted now
+        let json = "{\"password\":\"123456\",\"token\":\"tok_abc\",\"user\":\"john\"}"
+        let redactedJson = engine.redactJsonBody(json)
+        XCTAssertTrue(redactedJson.contains("123456"))
+        XCTAssertTrue(redactedJson.contains("tok_abc"))
+    }
+    
+    func testRedactionEngineWithCustomConfigRedactsSpecified() {
+        let config = RedactionConfig(
+            sensitiveHeaders: ["X-Custom-Secret"],
+            sensitiveJsonFields: ["private_key"]
+        )
+        let engine = RedactionEngine(config: config)
+        
+        let headers: [String: [String]] = [
+            "X-Custom-Secret": ["supersecret"],
+            "Authorization": ["Bearer token"]
+        ]
+        let redactedHeaders = engine.redactHeaders(headers)
+        XCTAssertEqual(redactedHeaders["X-Custom-Secret"], ["[REDACTED]"])
+        XCTAssertEqual(redactedHeaders["Authorization"], ["Bearer token"]) // Not in set, untouched
+        
+        let json = "{\"private_key\":\"key123\",\"public_key\":\"pub456\"}"
+        let redactedJson = engine.redactJsonBody(json)
+        XCTAssertTrue(redactedJson.contains("[REDACTED]"))
+        XCTAssertTrue(redactedJson.contains("pub456"))
+    }
 }

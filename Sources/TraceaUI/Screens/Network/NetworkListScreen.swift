@@ -7,6 +7,7 @@ struct NetworkListScreen: View {
     @State private var showingClearAlert = false
     @State private var showingSettings = false
     @State private var collapsedSessions: Set<String> = []
+    @State private var collapsedDomains: Set<String> = []
     
     var body: some View {
         ZStack {
@@ -79,11 +80,40 @@ struct NetworkListScreen: View {
                                     
                                     if isExpanded {
                                         LazyVStack(alignment: .leading, spacing: 0) {
-                                            ForEach(group.events) { event in
-                                                NavigationLink(value: event.id) {
-                                                    RequestRow(event: event)
+                                            ForEach(group.domainGroups) { domainGroup in
+                                                let domainKey = "\(group.sessionId)/\(domainGroup.domain)"
+                                                let isDomainExpanded = !collapsedDomains.contains(domainKey)
+                                                
+                                                VStack(alignment: .leading, spacing: 0) {
+                                                    DomainHeader(
+                                                        domain: domainGroup.domain,
+                                                        requestCount: domainGroup.requestCount,
+                                                        errorCount: domainGroup.errorCount,
+                                                        isExpanded: isDomainExpanded,
+                                                        onToggle: {
+                                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                                if collapsedDomains.contains(domainKey) {
+                                                                    collapsedDomains.remove(domainKey)
+                                                                } else {
+                                                                    collapsedDomains.insert(domainKey)
+                                                                }
+                                                            }
+                                                        }
+                                                    )
+                                                    
+                                                    if isDomainExpanded {
+                                                        LazyVStack(alignment: .leading, spacing: 0) {
+                                                            ForEach(domainGroup.events) { event in
+                                                                NavigationLink(value: event.id) {
+                                                                    RequestRow(event: event)
+                                                                }
+                                                                .buttonStyle(.plain)
+                                                                
+                                                                Divider().background(DebuggerColors.divider.opacity(0.4))
+                                                            }
+                                                        }
+                                                    }
                                                 }
-                                                .buttonStyle(.plain)
                                                 
                                                 Divider().background(DebuggerColors.divider.opacity(0.6))
                                             }

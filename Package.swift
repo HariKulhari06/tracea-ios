@@ -98,5 +98,15 @@ let package = Package(
             dependencies: ["TraceaManual", "TraceaCore"],
             path: "Tests/TraceaManualTests"
         ),
+        .testTarget(
+            name: "TraceaInterceptorTests",
+            dependencies: ["TraceaInterceptor", "TraceaCore"],
+            path: "Tests/TraceaInterceptorTests"
+        ),
+        .testTarget(
+            name: "TraceaUITests",
+            dependencies: ["TraceaUI", "TraceaCore"],
+            path: "Tests/TraceaUITests"
+        ),
     ]
 )

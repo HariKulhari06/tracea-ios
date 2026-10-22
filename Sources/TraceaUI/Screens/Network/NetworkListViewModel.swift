@@ -1,16 +1,47 @@
 import SwiftUI
 import TraceaCore
 
+public struct DomainGroup: Identifiable, Sendable {
+    public var id: String { domain }
+    public let domain: String
+    public let events: [NetworkEvent]
+    public var requestCount: Int { events.count }
+    public var errorCount: Int {
+        events.filter { ($0.statusCode ?? 0) >= 400 || $0.error != nil }.count
+    }
+    
+    public init(domain: String, events: [NetworkEvent]) {
+        self.domain = domain
+        self.events = events
+    }
+}
+
 public struct SessionGroup: Identifiable, Sendable {
     public var id: String { sessionId }
     public let sessionId: String
     public let sessionName: String
     public let events: [NetworkEvent]
+    public let domainGroups: [DomainGroup]
     
-    public init(sessionId: String, sessionName: String, events: [NetworkEvent]) {
+    public init(sessionId: String, sessionName: String, events: [NetworkEvent], domainGroups: [DomainGroup]? = nil) {
         self.sessionId = sessionId
         self.sessionName = sessionName
         self.events = events
+        if let domainGroups = domainGroups {
+            self.domainGroups = domainGroups
+        } else {
+            let domainDict = Dictionary(grouping: events) { event -> String in
+                let h = event.host.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !h.isEmpty { return h }
+                if let urlObj = URL(string: event.url), let uHost = urlObj.host, !uHost.isEmpty {
+                    return uHost
+                }
+                return "Unknown Host"
+            }
+            self.domainGroups = domainDict.map { (domain, evts) in
+                DomainGroup(domain: domain, events: evts)
+            }.sorted { $0.domain.localizedCaseInsensitiveCompare($1.domain) == .orderedAscending }
+        }
     }
 }
 
